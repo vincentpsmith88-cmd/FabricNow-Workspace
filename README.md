@@ -1,0 +1,26 @@
+# FabricNow Company Workspace (React + Vite)
+
+Workspace for companies on the **API Growth** plan: $2,900/month, 250 processed images included,
+$49/image overage with segmentation, $20/image for background removal only
+(matches https://fabricnow.tonasel.com/developers).
+
+## Run
+```bash
+npm install
+cp .env.example .env     # must be named exactly ".env", in this folder
+# edit .env: set VITE_API_URL and VITE_GOOGLE_CLIENT_ID
+npm run dev              # restart after any .env change
+```
+
+## Google sign-in
+The button is Google's own (Google Identity Services). After the user picks an account, the app POSTs
+`{ credential, idToken }` (the Google ID token) to `VITE_GOOGLE_AUTH_PATH` (default `/api/auth/google`)
+and expects `{ token, user }` back, same as `/api/auth/signin`.
+In Google Cloud Console, add your origin (e.g. `http://localhost:5173` and your production URL)
+under **Authorized JavaScript origins** for that OAuth client.
+
+## Branding
+Logo and favicon live in `public/logo-icon.svg` and `public/logo-icon.png`.
+
+## Production
+`npm run build`, then deploy `dist/`. Never put Stripe secret keys or service-account JSON in this project.
