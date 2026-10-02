@@ -4,12 +4,7 @@ import { api } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { Segmented } from '../components/ui.jsx';
 
-const GARMENTS = [
-  'dress','shirt','jacket','trousers','skirt','kaftan','Agbada','Boubou / Bubu','Dashiki',
-  'Kaba and Slit','Buba and Iro','Aso-Ebi Set','Aso-Oke Set','Kitenge Two-Piece','Shweshwe Dress',
-  'Ankara Maxi Dress','Mermaid Gown','Corset Gown','Peplum Dress','Senator Suit','Djellaba','Kanzu',
-  'Jumpsuit','Wrap Dress','Tunic','Kimono','Skirt Set','Blazer Set','Children’s Wear','Gele','Headwrap'
-];
+
 const LININGS=[{value:'none',label:'None'},{value:'partial',label:'Partial'},{value:'full',label:'Full'}];
 const MAX_NOTES=500;
 const cap=s=>s?s[0].toUpperCase()+s.slice(1):s;
@@ -36,17 +31,17 @@ function Dropzone({file,preview,onFile,big,title,hint,scanning}){
 }
 
 function PatternStudio({onDone,setPage}){
-  const toast=useToast(),[file,setFile]=useState(null),[swatch,setSwatch]=useState(null),[garment,setGarment]=useState('dress'),
+  const toast=useToast(),[file,setFile]=useState(null),[swatch,setSwatch]=useState(null),
   [lining,setLining]=useState('none'),[notes,setNotes]=useState(''),[busy,setBusy]=useState(false),[secs,setSecs]=useState(0),
   [error,setError]=useState(''),[result,setResult]=useState(null);
   const photo=usePreview(file),fabric=usePreview(swatch);
   useEffect(()=>{if(!busy){setSecs(0);return}const id=setInterval(()=>setSecs(s=>s+1),1000);return()=>clearInterval(id)},[busy]);
-  const reset=()=>{setFile(null);setSwatch(null);setNotes('');setGarment('dress');setLining('none');setResult(null);setError('')};
+  const reset=()=>{setFile(null);setSwatch(null);setNotes('');setLining('none');setResult(null);setError('')};
   const submit=async e=>{e.preventDefault();if(!file)return setError('Add a garment photo to continue.');if(file.size>10*1024*1024)return setError('That photo is over 10 MB.');
-    setBusy(true);setError('');try{const fd=new FormData();fd.append('file',file);if(swatch)fd.append('swatch',swatch);fd.append('garment',garment);fd.append('notes',notes);fd.append('lining',lining);
-      const d=await api('/api/workspace/patterns',{method:'POST',body:fd});setResult(d);onDone(d);toast.success('Pattern job created.')}catch(err){setError(err.message)}finally{setBusy(false)}};
+    setBusy(true);setError('');try{const fd=new FormData();fd.append('file',file);if(swatch)fd.append('swatch',swatch);fd.append('notes',notes);fd.append('lining',lining);
+      const d=await api('/api/workspace/patterns',{method:'POST',body:fd});setResult(d);onDone(d);toast.success('Pattern generation started.')}catch(err){setError(err.message)}finally{setBusy(false)}};
   if(result)return <section className="panel done"><svg className="check-anim" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" pathLength="1"/><path d="M15 27.5l7.5 7.5L37.5 19" pathLength="1"/></svg>
-    <h2>Pattern job created</h2><p className="muted">Your {garment} is being processed. The export keeps the Fabric Now Basic Plan folder structure.</p>
+    <h2>Generation started</h2><p className="muted">AI is identifying the garment type and constructing mathematical 2D pattern geometry from your photo. The final PNG/SVG boundaries are rendered from numeric geometry.</p>
     <p className="muted small-text">Job ID <code>{result.id||result.job_id}</code></p>
     <div className="done-actions"><button className="btn btn-primary" onClick={()=>setPage('projects')}>View in Projects <ArrowRight size={16}/></button><button className="btn btn-ghost" onClick={reset}><RotateCcw size={16}/> Start another</button></div>
   </section>;
@@ -55,19 +50,19 @@ function PatternStudio({onDone,setPage}){
       <Dropzone big file={file} preview={photo} onFile={f=>{setFile(f);setError('')}} title="Drop a garment photo here" hint="or click to browse" scanning={busy}/></div>
     <div className="step"><div className="step-head"><h3>Fabric reference <em>optional</em></h3><span>A close-up improves motif fidelity</span></div>
       <Dropzone file={swatch} preview={fabric} onFile={setSwatch} title="Add a fabric close-up" hint="Drop or click"/></div>
-    <div className="step"><div className="step-head"><h3>Garment type</h3><span>Use Auto-style through notes when the photo is uncertain</span></div>
-      <div className="chips">{GARMENTS.map(g=><button type="button" key={g} className={`chip ${garment===g?'on':''}`} onClick={()=>setGarment(g)}>{garment===g&&<Check size={14}/>} {cap(g)}</button>)}</div></div>
-    <div className="step"><div className="step-head"><h3>Lining</h3></div><Segmented label="Lining" options={LININGS} value={lining} onChange={setLining}/></div>
-    <div className="step"><div className="step-head"><h3>Designer notes</h3><span>{notes.length}/{MAX_NOTES}</span></div>
-      <textarea className="notes" rows={4} maxLength={MAX_NOTES} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Construction details, fit notes, special panels, African style details"/></div>
+    <div className="step"><div className="step-head"><h3>AI garment analysis</h3><span>FabricNow AI automatically identifies the garment and African style family from the photo.</span></div>
+      <div className="notice"><strong>No garment type selection required.</strong><br/>Claude is preferred for construction and geometry analysis when configured. OpenAI vision is the fallback. The AI determines the garment type, piece breakdown, proportions and numeric 2D geometry independently for each photo.</div></div>
+    <div className="step"><div className="step-head"><h3>Lining</h3><span>Optional construction instruction</span></div><Segmented label="Lining" options={LININGS} value={lining} onChange={setLining}/></div>
+    <div className="step"><div className="step-head"><h3>Designer notes <em>optional</em></h3><span>{notes.length}/{MAX_NOTES}</span></div>
+      <textarea className="notes" rows={4} maxLength={MAX_NOTES} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Optional: construction details, fit notes, special panels, cultural/style details"/></div>
     {error&&<div className="error">{error}</div>}
-    <div className="composer-bar"><p>{file?`${cap(garment)}${lining!=='none'?`, ${lining} lining`:''}`:'Add a garment photo to begin'}</p>
-      <button className="btn btn-primary btn-lg" disabled={busy||!file}><Sparkles size={16}/> {busy?'Generating…':'Generate Basic pattern ZIP'}</button></div>
+    <div className="composer-bar"><p>{file?`AI will identify the garment${lining!=='none'?`, ${lining} lining`:''}${swatch?', fabric reference added':''}`:'Add a garment photo to begin'}</p>
+      <button className="btn btn-primary btn-lg" disabled={busy||!file}><Sparkles size={16}/> {busy?'Generating…':'Generate'}</button></div>
   </form>
-  <aside className={`brief ${busy?'busy':''}`}><div className="brief-head"><span>Pattern brief</span><span className={`ready ${file?'on':''}`}>{busy?'Working':file?'Ready':'Waiting'}</span></div>
+  <aside className={`brief ${busy?'busy':''}`}><div className="brief-head"><span>AI pattern brief</span><span className={`ready ${file?'on':''}`}>{busy?'Working':file?'Ready':'Waiting'}</span></div>
     <div className="brief-photo">{photo?<img src={photo} alt="Garment preview"/>:<img src="/logo-icon.svg" alt="" className="float"/>}{busy&&<span className="scan"/>}</div>
-    <dl className="brief-list"><div><dt>Garment</dt><dd>{cap(garment)}</dd></div><div><dt>Lining</dt><dd>{cap(lining)}</dd></div><div><dt>Fabric</dt><dd>{swatch?'Reference added':'AI will inspect photo'}</dd></div></dl>
-    <p className="brief-foot-text">Each photo is analyzed independently. Piece names, cut counts and fabric details are saved in <code>manifest.json</code>.</p>
+    <dl className="brief-list"><div><dt>Garment</dt><dd>AI decides</dd></div><div><dt>Scope</dt><dd>Africa</dd></div><div><dt>Geometry</dt><dd>Numeric 2D</dd></div><div><dt>Fabric</dt><dd>{swatch?'Reference added':'AI will inspect photo'}</dd></div></dl>
+    <p className="brief-foot-text">Each photo is analyzed independently. The AI returns numeric piece geometry; FabricNow renders the final SVG/PNG deterministically and records the analysis in <code>manifest.json</code>.</p>
   </aside></div>;
 }
 
@@ -83,7 +78,7 @@ function AIGenerator(){
     <div className="step"><div className="step-head"><h3>What should FabricNow generate?</h3><span>Designed for African fashion and textile workflows</span></div>
       <div className="chips">{modes.map(([id,label,I])=><button type="button" className={`chip ${mode===id?'on':''}`} key={id} onClick={()=>setMode(id)}><I size={14}/>{label}</button>)}</div></div>
     <div className="step"><div className="step-head"><h3>Reference image <em>optional</em></h3></div><Dropzone file={file} preview={preview} onFile={setFile} title="Add a reference" hint="Use a garment or fabric image"/></div>
-    <div className="step"><div className="step-head"><h3>AI brief</h3></div><textarea className="notes" rows={7} value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder={mode==='fabric-print'?'Example: indigo Adire-inspired geometric repeat, deep blue and ivory, hand-dyed texture…':mode==='cutting-layout'?'Example: arrange front bodice, back bodice, sleeve and skirt pieces on 60-inch fabric…':'Example: modern Ghanaian Kaba and Slit with structured peplum, three-quarter sleeves, elegant Ankara placement…'}/></div>
+    <div className="step"><div className="step-head"><h3>AI brief</h3></div><textarea className="notes" rows={7} value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder={mode==='fabric-print'?'Example: indigo Adire-inspired geometric repeat, deep blue and ivory, hand-dyed texture…':mode==='cutting-layout'?'Example: arrange front bodice, back bodice, sleeve and skirt pieces on 60-inch fabric…':'Example: modern African Kaba and Slit with structured peplum, three-quarter sleeves, elegant Ankara placement…'}/></div>
     {error&&<div className="error">{error}</div>}<button className="btn btn-primary btn-lg" onClick={generate} disabled={busy}><Wand2 size={16}/>{busy?'Generating…':'Generate design'}</button>
   </section><aside className="brief"><div className="brief-head"><span>AI output</span><span className={`ready ${image?'on':''}`}>{busy?'Generating':image?'Ready':'Waiting'}</span></div>
     <div className="brief-photo ai-output">{image?<img src={image} alt="Generated design"/>:<Sparkles size={34}/>}</div>

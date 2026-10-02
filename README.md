@@ -33,3 +33,6 @@ Logo and favicon live in `public/logo-icon.svg` and `public/logo-icon.png`.
 - AI image workflows include fabric/print generation, colorways, model mockups, technical flats, lookbooks, Aso-Ebi coordination and cutting-layout concepts.
 - Product Listing AI generates title, descriptions, category, style, fabric, tags and SEO fields.
 - AI credentials remain server-side; `.env` files are intentionally excluded from this deliverable.
+
+
+Pattern Extraction: garment type is automatically identified by AI. The Generate button starts deterministic numeric geometry generation; designer notes are optional and the system is designed for African fashion across the continent, not a single country.
