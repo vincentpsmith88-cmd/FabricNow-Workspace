@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, RotateCcw, Sparkles, Check, ImagePlus, Ruler, Layers3, ShieldCheck } from 'lucide-react';
 import { api } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { Segmented } from '../components/ui.jsx';
@@ -54,7 +54,22 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   const gLabel = garmentLabel(catalog, garment);
 
   return (
-    <div className="cols studio">
+    <div className="pattern-studio-page">
+      <header className="studio-head">
+        <div>
+          <div className="studio-eyebrow">PATTERN STUDIO · PRODUCTION WORKSPACE</div>
+          <h2>Turn a garment reference into production-ready patterns.</h2>
+          <p>Upload a clear garment image, define the construction intent, and let the pattern engine prepare the pieces, SVGs and export package.</p>
+        </div>
+        <div className="studio-head-actions">
+          <span className="studio-status"><i/> Pattern engine connected through FabricNow API</span>
+          <button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15}/> Reset</button>
+        </div>
+      </header>
+      <div className="studio-steps">
+        {[['01','Reference','Add garment imagery',ImagePlus],['02','Configure','Define construction',Ruler],['03','Generate','Create pattern assets',Layers3],['04','Review','Check and export',ShieldCheck]].map(([n,t,d,I],i)=><div className={ready&&i<2?'active':''} key={n}><b>{n}</b><span><strong>{t}</strong><small>{d}</small></span>{i<3&&<ArrowRight size={14}/>}</div>)}
+      </div>
+      <div className="cols studio">
       {result ? (
         <div className="stack">
           <JobView jobId={result.id} initial={result} onJob={onJob} onDeleted={(id) => { onDeleted(id); reset(); }} />
@@ -64,29 +79,29 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
           </div>
         </div>
       ) : (
-        <form className="panel composer" onSubmit={submit}>
-          <div className="step">
-            <div className="step-head"><h3>Garment photo</h3><span>Front-facing, JPG, PNG or WebP, up to 10 MB</span></div>
+        <form className="panel composer studio-composer" onSubmit={submit}>
+          <div className="step studio-step">
+            <div className="step-head"><div><span className="studio-section-kicker">01 · REFERENCE</span><h3>Garment photo</h3></div><span>Front-facing, JPG, PNG or WebP, up to 10 MB</span></div>
             <Dropzone big file={file} preview={photo} onFile={(f) => { setFile(f); setError(''); }} title="Drop a garment photo here" hint="or click to browse" scanning={busy} />
           </div>
 
-          <div className="step">
-            <div className="step-head"><h3>Fabric reference <em>optional</em></h3><span>A close-up shows weave and print</span></div>
+          <div className="step studio-step">
+            <div className="step-head"><div><span className="studio-section-kicker">02 · MATERIAL</span><h3>Fabric reference <em>optional</em></h3></div><span>A close-up shows weave and print</span></div>
             <Dropzone file={swatch} preview={fabric} onFile={setSwatch} title="Add a fabric close-up" hint="Drop or click" />
           </div>
 
-          <div className="step">
-            <div className="step-head"><h3>Garment type</h3><span>Picking the exact style helps the AI plan the right pieces</span></div>
+          <div className="step studio-step">
+            <div className="step-head"><div><span className="studio-section-kicker">03 · CONSTRUCTION</span><h3>Garment type</h3></div><span>Picking the exact style helps the AI plan the right pieces</span></div>
             <GarmentSelect value={garment} onChange={setGarment} />
           </div>
 
-          <div className="step">
-            <div className="step-head"><h3>Lining</h3></div>
+          <div className="step studio-step">
+            <div className="step-head"><div><span className="studio-section-kicker">04 · FINISHING</span><h3>Lining</h3></div></div>
             <Segmented label="Lining" options={LININGS} value={lining} onChange={setLining} />
           </div>
 
-          <div className="step">
-            <div className="step-head"><h3>Designer notes</h3><span>{notes.length}/{MAX_NOTES}</span></div>
+          <div className="step studio-step">
+            <div className="step-head"><div><span className="studio-section-kicker">05 · DESIGN INTENT</span><h3>Designer notes</h3></div><span>{notes.length}/{MAX_NOTES}</span></div>
             <textarea className="notes" rows={4} maxLength={MAX_NOTES} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Construction details, fit notes, special panels" />
           </div>
 
@@ -100,6 +115,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
           </div>
         </form>
       )}
+      </div>
 
       <aside className={`brief ${busy ? 'busy' : ''}`} aria-label="Pattern brief">
         <div className="brief-head">
