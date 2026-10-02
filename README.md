@@ -24,3 +24,12 @@ Logo and favicon live in `public/logo-icon.svg` and `public/logo-icon.png`.
 
 ## Production
 `npm run build`, then deploy `dist/`. Never put Stripe secret keys or service-account JSON in this project.
+
+## AI Studio additions
+- Pattern Extraction preserves the Fabric Now Basic Plan export structure and adds `manifest.json` for piece names/cut counts.
+- Vision analysis supports OpenAI or Claude (`AI_VISION_PROVIDER=auto|openai|claude`).
+- Optional Claude quality review checks generated pattern sheets before export.
+- African garment generator includes Agbada, Boubou/Bubu, Dashiki, Kaba and Slit, Buba and Iro, Aso-Ebi/Aso-Oke, Kitenge, Shweshwe, Ankara, Mermaid/Corset/Peplum gowns, Senator, Djellaba, Kanzu and more.
+- AI image workflows include fabric/print generation, colorways, model mockups, technical flats, lookbooks, Aso-Ebi coordination and cutting-layout concepts.
+- Product Listing AI generates title, descriptions, category, style, fabric, tags and SEO fields.
+- AI credentials remain server-side; `.env` files are intentionally excluded from this deliverable.

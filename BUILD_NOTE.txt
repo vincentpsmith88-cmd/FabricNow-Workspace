@@ -1,0 +1,6 @@
+FabricNow Workspace implementation update
+The source has been updated for the AI Studio and Basic pattern workflow.
+Run:
+  npm ci
+  npm run build
+The supplied environment could not complete npm ci because package downloads timed out, so dist/ was removed rather than shipping a stale build.

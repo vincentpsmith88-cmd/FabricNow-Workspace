@@ -31,11 +31,19 @@ export default function App() {
     if (!user) return;
     Promise.allSettled([api('/api/billing/api-status'), api('/api/workspace/jobs')]).then(([a, j]) => {
       if (a.status === 'fulfilled') setApiStatus(a.value);
-      if (j.status === 'fulfilled') setJobs(j.value.jobs || []);
+      if (j.status === 'fulfilled') setJobs(Array.isArray(j.value) ? j.value : (j.value.jobs || []));
     });
   }, [user]);
 
   useEffect(() => { window.scrollTo(0, 0); }, [page]);
+
+  useEffect(() => {
+    if (!user || !jobs.some(j => ['queued','processing'].includes(j.status))) return undefined;
+    const id = setInterval(() => {
+      api('/api/workspace/jobs').then(d => setJobs(Array.isArray(d) ? d : (d.jobs || []))).catch(() => {});
+    }, 5000);
+    return () => clearInterval(id);
+  }, [user, jobs]);
 
   if (checking) return <div className="splash"><LogoMark size={44} /></div>;
   if (!user) return <Login onAuth={setUser} />;
