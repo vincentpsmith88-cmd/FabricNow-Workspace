@@ -72,8 +72,8 @@ export function Topbar({ page, setPage, openMenu, user, onLogout }) {
       </div>
       <div className="top-actions">
         {page !== 'studio' && (
-          <button className="btn btn-primary" aria-label="New pattern" onClick={() => setPage('studio')}>
-            <Plus size={16} /> <span className="hide-sm">New pattern</span>
+          <button className="btn btn-primary" aria-label="New product" onClick={() => setPage('fashion')}>
+            <Plus size={16} /> <span className="hide-sm">New product</span>
           </button>
         )}
         <div className="user-menu" ref={ref}>

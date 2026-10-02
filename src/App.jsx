@@ -14,6 +14,7 @@ import ApiKeys from './pages/ApiKeys.jsx';
 import Usage from './pages/Usage.jsx';
 import Billing from './pages/Billing.jsx';
 import { Company, SettingsPage, Help } from './pages/Account.jsx';
+import FashionOS from './pages/FashionOS.jsx';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -62,6 +63,7 @@ export default function App() {
 
   const view = {
     overview: <Overview user={user} apiStatus={apiStatus} jobs={jobs} setPage={setPage} />,
+    fashion: <FashionOS setPage={setPage} />,
     studio: <Studio onDone={addJob} onJob={updateJob} onDeleted={removeJob} setPage={setPage} />,
     lab: <Lab onDone={addJob} onJob={updateJob} onDeleted={removeJob} setPage={setPage} />,
     projects: <Projects jobs={jobs} setPage={setPage} onJob={updateJob} onDeleted={removeJob} />,
