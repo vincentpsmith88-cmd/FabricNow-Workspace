@@ -102,3 +102,24 @@
 [data-theme="dark"] .appearance-choice:hover{border-color:var(--orange)}
 [data-theme="dark"] .appearance-choice-icon{background:#3A2420}
 [data-theme="dark"] .appearance-switch{background:#3A3858}
+
+/* Pinterest Research / Inspiration Library */
+[data-theme="dark"] .pinterest-search-hero,[data-theme="dark"] .inspiration-empty{background:linear-gradient(135deg,rgba(32,30,52,.96) 0%,rgba(36,30,48,.92) 60%,rgba(30,28,52,.96) 100%);border-color:var(--line);box-shadow:var(--shadow-sm)}
+[data-theme="dark"] .pinterest-search-form{background:rgba(18,17,29,.7);border-color:var(--line)}
+[data-theme="dark"] .pinterest-search-form input{background:transparent;color:var(--text)}
+[data-theme="dark"] .inspiration-empty-icon{background:rgba(230,0,35,.14);border-color:rgba(230,0,35,.28)}
+[data-theme="dark"] .inspiration-empty-copy>span,[data-theme="dark"] .pm-eyebrow{color:#E9967A}
+[data-theme="dark"] .inspiration-empty-copy h3{color:var(--text)}
+[data-theme="dark"] .inspiration-empty-copy p{color:var(--muted)}
+[data-theme="dark"] .empty-query-chips button{background:rgba(18,17,29,.7);border-color:var(--line);color:var(--muted)}
+[data-theme="dark"] .empty-query-chips button:hover{border-color:#E9967A;color:#F5B8A0;background:rgba(230,98,57,.1)}
+[data-theme="dark"] .pin-card{background:var(--surface);border-color:var(--line);box-shadow:var(--shadow-sm)}
+[data-theme="dark"] .pin-card-title{color:var(--text)}
+[data-theme="dark"] .lib-empty{background:linear-gradient(180deg,rgba(32,30,52,.6),rgba(27,26,45,.9));border-color:var(--line)}
+[data-theme="dark"] .lib-empty-tile{background:rgba(255,255,255,.04);border-color:var(--line);color:#5C607A}
+[data-theme="dark"] .lib-empty-body .inspiration-empty-icon{background:rgba(230,0,35,.16)}
+[data-theme="dark"] .lib-empty-label{color:#E9967A}
+[data-theme="dark"] .lib-empty-body h3{color:var(--text)}
+[data-theme="dark"] .lib-empty-body p{color:var(--muted)}
+[data-theme="dark"] .lib-empty-steps li{background:rgba(27,26,45,.9);border-color:var(--line);color:var(--muted)}
+[data-theme="dark"] .lib-empty-steps b{background:rgba(230,0,35,.16);color:#FF8F9D}

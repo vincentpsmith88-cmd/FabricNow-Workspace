@@ -18,7 +18,7 @@ function loadGsi() {
 }
 
 /** Renders Google's own button. `onCredential` receives the Google ID token. */
-export default function GoogleButton({ onCredential, onError, text = 'continue_with' }) {
+export default function GoogleButton({ onCredential, onError, text = 'continue_with', theme = 'outline', shape = 'rectangular' }) {
   const box = useRef(null);
   const cb = useRef(onCredential);
   cb.current = onCredential;
@@ -37,14 +37,14 @@ export default function GoogleButton({ onCredential, onError, text = 'continue_w
         });
         const width = Math.min(400, Math.max(200, Math.round(box.current.getBoundingClientRect().width)));
         window.google.accounts.id.renderButton(box.current, {
-          type: 'standard', theme: 'outline', size: 'large', shape: 'rectangular',
+          type: 'standard', theme, size: 'large', shape,
           text, logo_alignment: 'center', width,
         });
         setState('ready');
       })
       .catch(() => { if (!cancelled) setState('failed'); });
     return () => { cancelled = true; };
-  }, [text, onError]);
+  }, [text, onError, theme, shape]);
 
   if (state === 'missing') {
     return (

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ArrowUpRight, Grid3X3, MoveDiagonal, Ruler, Scissors, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, Ruler, Scissors, ShieldCheck, Sparkles } from 'lucide-react';
 import { api, TOKEN_KEY, GOOGLE_AUTH_PATH } from '../api.js';
 import { Brand } from '../components/Logo.jsx';
 import GoogleButton from '../components/GoogleButton.jsx';
@@ -10,6 +10,7 @@ export default function Login({ onAuth }) {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [show, setShow] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const finish = async (d) => {
@@ -36,53 +37,92 @@ export default function Login({ onAuth }) {
   }, []); // eslint-disable-line
 
   return (
-    <main className="auth-atelier">
-      <section className="atelier-canvas" aria-hidden="true">
-        <header className="atelier-topbar"><Brand light size={28} /><span>FABRICNOW / FASHION OS</span><span className="atelier-index">01 — 04</span></header>
-        <div className="atelier-grid" />
-        <div className="atelier-draft">
-          <div className="draft-title">PATTERN / STUDY 04</div>
-          <div className="draft-figure">
-            <span className="draft-neck" /><span className="draft-shoulder" /><span className="draft-bodice" /><span className="draft-waist" /><span className="draft-skirt" />
-            <i className="draft-seam seam-a" /><i className="draft-seam seam-b" /><i className="draft-seam seam-c" />
+    <main className="lx">
+      {/* ambient background */}
+      <div className="lx-bg" aria-hidden="true">
+        <i className="lx-aurora lx-a1" /><i className="lx-aurora lx-a2" /><i className="lx-aurora lx-a3" />
+        <div className="lx-grid" /><div className="lx-grain" />
+      </div>
+
+      {/* brand story — decorative, hidden below 1000px */}
+      <section className="lx-hero" aria-hidden="true">
+        <header className="lx-top">
+          <Brand light size={30} />
+          <span className="lx-badge"><i /> Fashion OS</span>
+        </header>
+
+        <div className="lx-hero-main">
+          <div className="lx-eyebrow" style={{ '--i': 0 }}><Sparkles size={13} /> Design · Sourcing · Production</div>
+          <h1 style={{ '--i': 1 }}>Build the garment.<br /><em>Then build the system.</em></h1>
+          <p style={{ '--i': 2 }}>Visual research, materials, pattern development and production — one connected workspace for your fashion company.</p>
+
+          <div className="lx-stage">
+            <article className="lx-glass lx-c-ref">
+              <div className="lx-c-head"><span className="lx-pin">P</span><small>Pinterest Research</small></div>
+              <div className="lx-ref-img" />
+              <strong className="lx-c-title">Indigo batik maxi dress</strong>
+              <div className="lx-c-link"><span>Reference saved</span><ArrowRight size={13} /><b>Pattern Studio</b></div>
+            </article>
+
+            <article className="lx-glass lx-c-job">
+              <div className="lx-c-head"><Scissors size={14} /><small>Pattern Studio</small><span className="lx-live"><i />Processing</span></div>
+              <strong className="lx-c-title">Wrap dress · 8 pattern pieces</strong>
+              <div className="lx-bar"><i /></div>
+              <div className="lx-steps"><span className="done">Segment</span><span className="done">Pieces</span><span className="on">Grade</span><span>Export</span></div>
+            </article>
+
+            <article className="lx-glass lx-c-fab">
+              <div className="lx-c-head"><small>Fabric Library</small></div>
+              <div className="lx-swatches"><i className="sw-ankara" /><i className="sw-kente" /><i className="sw-indigo" /></div>
+              <span className="lx-c-sub">African prints &amp; materials</span>
+            </article>
+
+            <div className="lx-glass lx-c-chip"><Ruler size={13} /> Bust 92 · Waist 74 · Hip 98 cm</div>
           </div>
-          <div className="draft-measure m-a"><span>42</span><i /></div>
-          <div className="draft-measure m-b"><span>18</span><i /></div>
-          <div className="draft-cross cross-a" /><div className="draft-cross cross-b" />
-          <div className="draft-note note-a"><Ruler size={12}/> GRAINLINE / BIAS</div>
-          <div className="draft-note note-b"><Scissors size={12}/> CUT / FORM / FIT</div>
-        </div>
-        <div className="atelier-orbit orbit-one" /><div className="atelier-orbit orbit-two" />
-        <div className="atelier-pin"><span className="pinterest-mark">P</span><div><small>PINTEREST RESEARCH</small><strong>Reference → Pattern Studio</strong></div><ArrowUpRight size={15}/></div>
-        <div className="atelier-live"><span /><span>LIVE CANVAS</span><b>02:41:08</b></div>
-        <div className="atelier-copy">
-          <div className="atelier-eyebrow"><Sparkles size={13}/> DESIGN / SOURCING / PRODUCTION</div>
-          <h1>Build the garment.<br/><em>Then build the system.</em></h1>
-          <p>FabricNow connects visual research, materials, pattern development and production in one company workspace.</p>
-          <div className="atelier-tags"><span><Grid3X3 size={13}/> Visual research</span><span><Scissors size={13}/> Pattern Studio</span><span><MoveDiagonal size={13}/> Production OS</span></div>
         </div>
       </section>
 
-      <section className="atelier-auth">
-        <div className="atelier-auth-inner">
-          <div className="atelier-mobile-brand"><Brand size={28}/></div>
-          <div className="atelier-kicker">{inviteToken ? 'COMPANY INVITATION' : 'FABRICNOW / SIGN IN'}</div>
+      {/* sign-in */}
+      <section className="lx-panel">
+        <div className="lx-form-card">
+          <div className="lx-mbrand"><Brand light size={28} /></div>
+          <div className="lx-kicker">{inviteToken ? 'Company invitation' : 'FabricNow / Sign in'}</div>
           <h2>{inviteToken ? 'Join your company workspace.' : 'Your workspace, ready.'}</h2>
-          <p className="atelier-sub">{inviteToken ? 'Use the invited email address to continue.' : 'Sign in to continue designing, sourcing and producing.'}</p>
+          <p className="lx-sub">{inviteToken ? 'Use the invited email address to continue.' : 'Sign in to continue designing, sourcing and producing.'}</p>
 
-          <GoogleButton onCredential={google} onError={setError} text="signin_with" />
+          <GoogleButton onCredential={google} onError={setError} text="signin_with" theme="filled_black" shape="pill" />
           {import.meta.env.DEV && <p className="dev-hint">Google must list <code>{window.location.origin}</code> under Authorized JavaScript origins.</p>}
-          <div className="atelier-divider"><span>or</span></div>
+
+          <div className="lx-divider"><span>or continue with email</span></div>
 
           <form onSubmit={submit}>
-            <label className="atelier-field"><span>Work email</span><input type="email" value={form.email} onChange={set('email')} autoComplete="email" required placeholder="you@company.com" /></label>
-            <label className="atelier-field"><span>Password</span><input type="password" value={form.password} onChange={set('password')} autoComplete="current-password" required placeholder="••••••••" /></label>
-            {error && <div className="error atelier-error" role="alert">{error}</div>}
-            <button className="atelier-submit" disabled={busy} aria-busy={busy}>{busy ? <Spinner size={17}/> : <>Enter workspace <ArrowUpRight size={16}/></>}</button>
+            <label className="lx-field">
+              <span>Work email</span>
+              <div className="lx-input">
+                <Mail size={17} className="lx-ico" />
+                <input type="email" value={form.email} onChange={set('email')} autoComplete="email" required placeholder="you@company.com" />
+              </div>
+            </label>
+            <label className="lx-field">
+              <span>Password</span>
+              <div className="lx-input">
+                <Lock size={17} className="lx-ico" />
+                <input type={show ? 'text' : 'password'} value={form.password} onChange={set('password')} autoComplete="current-password" required placeholder="Enter your password" />
+                <button type="button" className="lx-eye" data-no-spin onClick={() => setShow(v => !v)} aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show}>
+                  {show ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </div>
+            </label>
+
+            {error && <div className="lx-error" role="alert"><AlertCircle size={16} /><span>{error}</span></div>}
+
+            <button className="lx-submit" data-no-spin disabled={busy} aria-busy={busy}>
+              {busy ? <Spinner size={18} /> : <>Enter workspace <ArrowRight size={17} /></>}
+            </button>
           </form>
 
-          <div className="atelier-security"><span /> Company access is permission-based. You only see workspaces you are authorized to access.</div>
-          <p className="atelier-contact">Need access to a company? <a href="https://fabricnow.tonasel.com/contact?topic=api-enterprise" target="_blank" rel="noreferrer">Contact FabricNow</a></p>
+          <div className="lx-security"><ShieldCheck size={15} /><span>Access is permission-based — you only see workspaces you are authorized to open.</span></div>
+          <p className="lx-contact">Need access to a company? <a href="https://fabricnow.tonasel.com/contact?topic=api-enterprise" target="_blank" rel="noreferrer">Contact FabricNow</a></p>
         </div>
       </section>
     </main>
