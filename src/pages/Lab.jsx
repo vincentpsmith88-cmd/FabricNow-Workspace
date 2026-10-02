@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, Copy, Layers, Palette, PenLine, Pipette, Shirt, Sparkles, Users, FileText, Wand2 } from 'lucide-react';
+import { Check, Copy, Layers, Palette, PenLine, Pipette, Shirt, Sparkles, Users, FileText, Wand2, ArrowRight, ImagePlus, Zap, Grid3X3, LayoutTemplate, ScanLine } from 'lucide-react';
 import { api } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { Segmented, StatusPill } from '../components/ui.jsx';
@@ -11,29 +11,62 @@ import { isDone, isFailed, jobTitle } from '../usage.js';
 const LININGS = [{ value: 'none', label: 'None' }, { value: 'partial', label: 'Partial' }, { value: 'full', label: 'Full' }];
 
 const TOOLS = [
-  { id: 'print', icon: Wand2, label: 'Print generator', blurb: 'Describe an Ankara, kente, adire or mudcloth style and get a seamless repeat you can tile.', image: 'optional', imageTitle: 'Inspiration photo (optional)' },
-  { id: 'colorways', icon: Palette, label: 'Colourways', blurb: 'One print or garment, up to six new colour versions. Leave palettes blank and the AI suggests them.', image: 'required', imageTitle: 'Print or garment photo' },
-  { id: 'fabric', icon: Pipette, label: 'Fabric extraction', blurb: 'Pull a clean, flat fabric swatch out of a photo of someone wearing it.', image: 'required', imageTitle: 'Photo of the worn garment' },
-  { id: 'flats', icon: PenLine, label: 'Sketch to flats', blurb: 'Front and back technical drawings, construction notes, bill of materials and a rough yardage.', image: 'required', imageTitle: 'Sketch or garment photo' },
-  { id: 'mockup', icon: Shirt, label: 'Mockups and lookbook', blurb: 'Show a garment or print on a model in the scenes you describe.', image: 'required', imageTitle: 'Garment photo or fabric print' },
-  { id: 'asoebi', icon: Users, label: 'Aso-ebi styles', blurb: 'The same fabric sewn into different styles for a group: kaba and slit, agbada, peplum gown and more.', image: 'required', imageTitle: 'The fabric' },
-  { id: 'listing', icon: FileText, label: 'Listing writer', blurb: 'Title, description, silhouette, fabric, style, tags and SEO text from product photos. You review before publishing.', image: 'multi', max: 4 },
-  { id: 'batch', icon: Layers, label: 'Batch patterns', blurb: 'Up to 10 garment photos in one go. Each photo gets its own analysis and its own ZIP.', image: 'multi', max: 10 },
+  { id: 'print', icon: Wand2, label: 'Print generator', short:'Prints', blurb: 'Create seamless textile patterns from a description or inspiration image.', image: 'optional', imageTitle: 'Inspiration photo (optional)', accent:'coral' },
+  { id: 'colorways', icon: Palette, label: 'Colourways', short:'Colourways', blurb: 'Explore fresh colour directions for an existing print or garment.', image: 'required', imageTitle: 'Print or garment photo', accent:'violet' },
+  { id: 'fabric', icon: Pipette, label: 'Fabric extraction', short:'Fabric', blurb: 'Extract a clean, production-ready fabric swatch from a worn garment photo.', image: 'required', imageTitle: 'Photo of the worn garment', accent:'blue' },
+  { id: 'flats', icon: PenLine, label: 'Sketch to flats', short:'Tech flats', blurb: 'Turn a sketch or garment image into front and back technical drawings.', image: 'required', imageTitle: 'Sketch or garment photo', accent:'green' },
+  { id: 'mockup', icon: Shirt, label: 'Mockups and lookbook', short:'Mockups', blurb: 'Visualise a garment or print on a model across campaign-ready scenes.', image: 'required', imageTitle: 'Garment photo or fabric print', accent:'amber' },
+  { id: 'asoebi', icon: Users, label: 'Aso-ebi styles', short:'Aso-ebi', blurb: 'Explore coordinated styles from the same fabric for a complete group look.', image: 'required', imageTitle: 'The fabric', accent:'rose' },
+  { id: 'listing', icon: FileText, label: 'Listing writer', short:'Listings', blurb: 'Create product copy, tags, SEO metadata and alt text from product photos.', image: 'multi', max: 4, accent:'slate' },
+  { id: 'batch', icon: Layers, label: 'Batch patterns', short:'Batch', blurb: 'Process up to ten garment photos and generate individual pattern packages.', image: 'multi', max: 10, accent:'indigo' },
 ];
 
 export default function Lab({ onDone, onJob, onDeleted, setPage }) {
   const [tool, setTool] = useState('print');
   const t = TOOLS.find((x) => x.id === tool);
   return (
-    <div className="stack">
-      <div className="chips lab-tabs" role="tablist" aria-label="AI tools">
-        {TOOLS.map((x) => (
-          <button type="button" key={x.id} role="tab" aria-selected={tool === x.id} className={`chip ${tool === x.id ? 'on' : ''}`} onClick={() => setTool(x.id)}>
-            <x.icon size={15} />{x.label}
-          </button>
-        ))}
+    <div className="design-lab">
+      <section className="lab-hero">
+        <div className="lab-hero-copy">
+          <div className="lab-kicker"><Sparkles size={14} /> AI CREATIVE WORKSPACE</div>
+          <h2>Design ideas into <span>production-ready assets.</span></h2>
+          <p>Generate prints, colourways, technical flats, mockups and product content from one focused creative workspace.</p>
+          <div className="lab-hero-points">
+            <span><Zap size={14}/> Fast creative exploration</span>
+            <span><ScanLine size={14}/> Built for fashion workflows</span>
+            <span><LayoutTemplate size={14}/> Reusable outputs</span>
+          </div>
+        </div>
+        <div className="lab-hero-art" aria-hidden="true">
+          <div className="lab-art-card lab-art-back"><Grid3X3 size={22}/><span>Pattern</span></div>
+          <div className="lab-art-card lab-art-main"><ImagePlus size={28}/><strong>Creative canvas</strong><small>Upload · describe · generate</small></div>
+          <div className="lab-art-orbit orbit-one"></div><div className="lab-art-orbit orbit-two"></div>
+        </div>
+      </section>
+
+      <section className="lab-workspace-head">
+        <div><span className="lab-section-label">CHOOSE A WORKFLOW</span><h3>What are you creating?</h3><p>Start with a tool below. Your current setup stays ready as you switch between workflows.</p></div>
+        <div className="lab-step-note"><span>01</span><div><strong>Pick a tool</strong><small>Then add your image or brief</small></div></div>
+      </section>
+
+      <div className="lab-tool-grid" role="tablist" aria-label="Design Lab tools">
+        {TOOLS.map((x) => {
+          const Icon = x.icon; const active = tool === x.id;
+          return <button type="button" key={x.id} role="tab" aria-selected={active} className={`lab-tool-card ${active ? 'active' : ''} lab-accent-${x.accent}`} onClick={() => setTool(x.id)}>
+            <span className="lab-tool-icon"><Icon size={19}/></span>
+            <span className="lab-tool-copy"><strong>{x.label}</strong><small>{x.blurb}</small></span>
+            <ArrowRight className="lab-tool-arrow" size={17}/>
+          </button>;
+        })}
       </div>
-      <ToolPanel key={tool} tool={t} onDone={onDone} onJob={onJob} onDeleted={onDeleted} setPage={setPage} />
+
+      <section className="lab-editor">
+        <div className="lab-editor-head">
+          <div className="lab-editor-title"><span className={`lab-editor-icon lab-accent-${t.accent}`}><t.icon size={19}/></span><div><span className="lab-section-label">02 · CONFIGURE</span><h3>{t.label}</h3><p>{t.blurb}</p></div></div>
+          <div className="lab-ready"><i/> Ready to generate</div>
+        </div>
+        <ToolPanel key={tool} tool={t} onDone={onDone} onJob={onJob} onDeleted={onDeleted} setPage={setPage} />
+      </section>
     </div>
   );
 }

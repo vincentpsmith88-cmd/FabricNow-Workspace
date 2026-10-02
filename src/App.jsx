@@ -4,8 +4,8 @@ import {getUsage,isRunning} from './usage.js';
 import {Sidebar,Topbar,BottomNav} from './components/Shell.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import UsageAlert from './components/UsageAlert.jsx';
-import {useTheme} from './theme.js';
 import {LogoMark} from './components/Logo.jsx';
+import {useTheme} from './theme.js';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Login from './pages/Login.jsx';
 import Overview from './pages/Overview.jsx';
@@ -24,7 +24,7 @@ const fashionPageTabs={
  'fashion-command':'command','fashion-capture':'capture','fashion-factory':'factory','fashion-production':'production','fashion-collections':'collections','fashion-marketing':'marketing','fashion-library':'library','fashion-store':'store','fashion-team':'team'
 };
 export default function App(){
- const [user,setUser]=useState(null);const [checking,setChecking]=useState(Boolean(localStorage.getItem(TOKEN_KEY)));const [page,setPage]=useState('overview');const [menu,setMenu]=useState(false);const [collapsed,setCollapsed]=useState(()=>localStorage.getItem('fabricnow.sidebar.collapsed')==='1');const [apiStatus,setApiStatus]=useState(null);const [jobs,setJobs]=useState([]);const [palette,setPalette]=useState(false);const [theme,toggleTheme]=useTheme();const [health,setHealth]=useState(null);
+ const [user,setUser]=useState(null);const [checking,setChecking]=useState(Boolean(localStorage.getItem(TOKEN_KEY)));const [page,setPage]=useState('overview');const [menu,setMenu]=useState(false);const [collapsed,setCollapsed]=useState(()=>localStorage.getItem('fabricnow.sidebar.collapsed')==='1');const [apiStatus,setApiStatus]=useState(null);const [jobs,setJobs]=useState([]);const [palette,setPalette]=useState(false);const [health,setHealth]=useState(null);const [theme,toggleTheme]=useTheme();
  useEffect(()=>{const h=e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setPalette(p=>!p)}};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[]);
  useEffect(()=>{if(!user)return;let live=true;const ping=()=>api('/api/workspace/health').then(d=>live&&setHealth(d.engine===true?'ok':'engine')).catch(()=>live&&setHealth('api'));ping();const id=setInterval(ping,60000);return()=>{live=false;clearInterval(id)}},[user]);
  useEffect(()=>{if(!localStorage.getItem(TOKEN_KEY))return;api('/api/auth/me').then(d=>setUser(d.user)).catch(()=>localStorage.removeItem(TOKEN_KEY)).finally(()=>setChecking(false))},[]);

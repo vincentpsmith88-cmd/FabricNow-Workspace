@@ -40,7 +40,7 @@ export default function FashionOS({setPage,initialTab='command'}){
    {tab==='production'&&<Production projects={projects} onChange={load} notify={(message)=>toast.success(message)}/>} 
    {tab==='collections'&&<Collections collections={collections} projects={projects} onChange={load} notify={(message)=>toast.success(message)}/>} 
    {tab==='marketing'&&<Marketing projects={projects} collections={collections} onChange={load} notify={(message)=>toast.success(message)}/>} 
-   {tab==='library'&&<Library assets={library}/>} 
+   {tab==='library'&&<Library assets={library} setPage={setPage}/>} 
    {tab==='store'&&<StoreTab projects={projects} notify={(message)=>toast.success(message)}/>} 
    {tab==='team'&&<Team team={team} onChange={load} notify={(message)=>toast.success(message)}/>} 
   </>}
@@ -69,7 +69,32 @@ function Collections({collections,projects,onChange,notify}){const [name,setName
 
 function Marketing({projects,collections,onChange,notify}){const [selected,setSelected]=useState(projects[0]?.id||'');const p=projects.find(x=>x.id===selected);const [busy,setBusy]=useState(false);const generate=async()=>{if(!p)return;setBusy(true);try{const d=await api('/api/workspace/ai/listing',{method:'POST',body:JSON.stringify({garment:p.category||p.name,fabric:p.fabric||'',style:p.style||'',notes:'Generate ecommerce listing, SEO metadata, tags, alt text and confidence notes.'})});await api(`/api/workspace-suite/projects/${p.id}`,{method:'PUT',body:JSON.stringify({listing:d,seo:{title:d.seo_title,description:d.seo_description}})});onChange();notify('Product content generated.')}catch(e){notify(e.message)}finally{setBusy(false)}};return <div className="os-grid-2"><section className="os-card"><h3>Marketing Factory</h3><label className="field">Product<select value={selected} onChange={e=>setSelected(e.target.value)}>{projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><div className="marketing-actions"><button onClick={generate} disabled={busy}><Sparkles size={17}/><strong>{busy?'Generating…':'Generate listing + SEO'}</strong><small>Title, description, tags, alt text</small></button><button onClick={()=>notify('Use Design Lab → Mockup Studio to generate model and campaign images.')}><Images size={17}/><strong>Product photography</strong><small>Consistent models, poses and scenes</small></button><button onClick={()=>notify('Select a collection in Collection Builder to generate the lookbook.')}><BookOpen size={17}/><strong>Lookbook / catalogue</strong><small>Collection presentation assets</small></button></div></section><section className="os-card"><h3>Campaign outputs</h3><div className="feature-list">{['Ecommerce product page','Marketplace listing','SEO package','Social caption set','Image alt text','Collection lookbook','Digital catalogue','Campaign image brief'].map(x=><div key={x}><CheckCircle2 size={18}/><span><strong>{x}</strong><small>Generated from the same approved product record.</small></span></div>)}</div></section></div>}
 
-function Library({assets}){const [q,setQ]=useState('');const list=useMemo(()=>assets.filter(a=>`${a.name||''} ${a.projectName||''} ${a.type||''}`.toLowerCase().includes(q.toLowerCase())),[assets,q]);return <section className="os-card"><div className="os-card-head"><div><h3>Asset Library</h3><p>One searchable home for garment, fabric, pattern, mockup and production assets.</p></div><div className="search-box"><Search size={15}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search assets"/></div></div><div className="asset-grid">{list.map((a,i)=><div className="asset-card" key={`${a.url}-${i}`}><div className="asset-preview">{a.url?.match(/\.(png|jpg|jpeg|webp)$/i)?<img src={a.url} alt=""/>:<Layers3 size={25}/>}</div><strong>{a.name||a.type||'Asset'}</strong><small>{a.projectName}</small></div>)}{!list.length&&<Empty title="No matching assets" body="Assets appear here as products move through the workspace."/>}</div></section>}
+function Library({assets,setPage}){
+ const [q,setQ]=useState('');
+ const list=useMemo(()=>assets.filter(a=>`${a.name||''} ${a.projectName||''} ${a.type||''}`.toLowerCase().includes(q.toLowerCase())),[assets,q]);
+ return <section className="os-card asset-library-card">
+   <div className="os-card-head asset-library-head">
+     <div><span className="library-kicker">YOUR CREATIVE LIBRARY</span><h3>Asset Library</h3><p>One searchable home for garment, fabric, pattern, mockup and production assets.</p></div>
+     <div className="search-box asset-search"><Search size={15}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search assets"/></div>
+   </div>
+   {list.length ? <div className="asset-grid">{list.map((a,i)=><div className="asset-card" key={`${a.url}-${i}`}><div className="asset-preview">{a.url?.match(/\.(png|jpg|jpeg|webp)$/i)?<img src={a.url} alt=""/>:<Layers3 size={25}/>}</div><strong>{a.name||a.type||'Asset'}</strong><small>{a.projectName}</small></div>)}</div> :
+     <div className="library-empty">
+       <div className="library-empty-visual">
+         <div className="library-empty-orb"><FolderOpen size={28}/></div>
+         <span className="empty-float empty-float-a"><Images size={16}/></span>
+         <span className="empty-float empty-float-b"><Palette size={16}/></span>
+         <span className="empty-float empty-float-c"><Layers3 size={16}/></span>
+       </div>
+       <div className="library-empty-copy">
+         <span className="library-empty-label">{q ? 'NO RESULTS' : 'YOUR LIBRARY IS READY'}</span>
+         <h4>{q ? 'Nothing matches that search' : 'Your creative assets will live here'}</h4>
+         <p>{q ? `We couldn't find an asset matching “${q}”. Try another keyword or clear the search.` : 'Generate assets from Product Capture, Pattern Studio or Design Lab and they will automatically appear here, ready to reuse across your workspace.'}</p>
+         {!q && <div className="library-empty-actions"><button className="btn btn-primary" onClick={()=>setPage('lab')}>Open Design Lab <ArrowRight size={15}/></button><span><Sparkles size={14}/> Generated assets are saved automatically</span></div>}
+         {q && <button className="btn btn-ghost" onClick={()=>setQ('')}>Clear search</button>}
+       </div>
+     </div>}
+ </section>
+}
 
 function StoreTab({projects,notify}){const [busy,setBusy]=useState(false);const [csv,setCsv]=useState('');const exportStore=async()=>{setBusy(true);try{const d=await api('/api/workspace-suite/store/export',{method:'POST',body:JSON.stringify({projectIds:projects.map(p=>p.id)})});setCsv(d.csv);const blob=new Blob([d.csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=d.filename;a.click();URL.revokeObjectURL(url)}catch(e){notify(e.message)}finally{setBusy(false)}};return <div className="os-grid-2"><section className="os-card"><h3>Store Sync</h3><p className="muted">Turn approved workspace products into a normalized store feed or connect the same records through API.</p><Btn busy={busy} onClick={exportStore}><Store size={15}/> Export store CSV</Btn><div className="integration-grid">{INTEGRATIONS.map(x=><div key={x.id} className="integration-card"><span className="integration-logo">{x.logo}</span><span><strong>{x.name}</strong><small>{x.note}</small></span></div>)}</div></section><section className="os-card"><h3>Developer API</h3><div className="api-endpoints">{['POST /garments/capture','POST /garments/extract','POST /products/content','POST /products/mockup','POST /tech-packs/generate','POST /collections/generate','POST /store/export','GET /assets'].map(x=><code key={x}>{x}</code>)}</div><p className="muted small-text">Your existing API Keys and billing system remain available under Developers.</p>{csv&&<textarea rows={10} value={csv} readOnly/>}</section></div>}
 

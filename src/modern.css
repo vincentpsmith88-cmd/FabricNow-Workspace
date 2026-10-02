@@ -460,3 +460,8 @@ kbd{font:600 .68rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;padding:4px 6p
   .onboard{padding:18px}
   .onboard-head{flex-wrap:wrap}
 }
+
+/* White mode is the only workspace appearance. */
+:root{color-scheme:light;--bg:#FFFFFF}
+body{background:#FFFFFF}
+.topbar{background:rgba(255,255,255,.92)}
