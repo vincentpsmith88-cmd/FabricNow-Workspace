@@ -23,6 +23,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   const [gender, setGender] = useState('female');
   const [size, setSize] = useState('M');
   const [fitSystem, setFitSystem] = useState('Standard');
+  const [modelId, setModelId] = useState('african-female-fat-short');
   const [busy, setBusy] = useState(false);
   const [secs, setSecs] = useState(0);
   const [error, setError] = useState('');
@@ -51,7 +52,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
       fd.append('file', file);
       if (swatch) fd.append('swatch', swatch);
       fd.append('garment', garment); fd.append('notes', notes); fd.append('lining', lining);
-      fd.append('model_gender', gender); fd.append('model_size', size); fd.append('fit_system', fitSystem);
+      fd.append('model_gender', gender); fd.append('model_size', size); fd.append('fit_system', fitSystem); fd.append('model_id', modelId);
       const d = await api('/api/workspace/patterns', { method: 'POST', body: fd });
       setResult(d); onDone(d); toast.success('Pattern job started with your fit model.');
     } catch (err) { setError(err.message); }
@@ -106,7 +107,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
             <label className="field studio-notes-field"><span>Designer notes <em>{notes.length}/{MAX_NOTES}</em></span><textarea rows={3} maxLength={MAX_NOTES} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Construction details, fit notes, special panels, closures, neckline or sleeve changes" /></label>
           </section>
 
-          <FitModelPanel gender={gender} setGender={setGender} size={size} setSize={setSize} fitSystem={fitSystem} setFitSystem={setFitSystem} />
+          <FitModelPanel gender={gender} setGender={setGender} size={size} setSize={setSize} fitSystem={fitSystem} setFitSystem={setFitSystem} modelId={modelId} setModelId={setModelId} onOpenLibrary={() => setPage('fit-models')} />
 
           {error && <div className="error" role="alert">{error}</div>}
           <div className="studio-submit-bar">

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Store, Users, Bot, Shirt, Ruler, FileText, Kanban, ShieldCheck, Database } from 'lucide-react';
+import { LayoutDashboard, Box, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Store, Users, Bot, Shirt, Ruler, FileText, Kanban, ShieldCheck, Database } from 'lucide-react';
 
 const fashionItems = [
   { id:'fashion-command', label:'Command Center', icon:LayoutDashboard, sub:'Fashion production at a glance.' },
@@ -22,6 +22,7 @@ export const NAV_GROUPS = [
   { label:'Workspace', items:[
     {id:'overview',label:'Overview',icon:LayoutDashboard,sub:'Your garment automation at a glance.'},
     {id:'studio',label:'Pattern Studio',icon:Scissors,sub:'Turn a garment photo into pattern assets.'},
+    {id:'fit-models',label:'3D Fit Models',icon:Box,sub:'Inspect every fitting avatar in a dedicated viewer.'},
     {id:'lab',label:'Design Lab',icon:Palette,sub:'Prints, colourways, flats, mockups, aso-ebi styles and listings.'},
     {id:'projects',label:'Projects',icon:FolderKanban,sub:'Every pattern job your team has run.'},
   ]},

@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Inter,Arial,sans-serif}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f5f3ef;font-family:Inter,Arial,sans-serif}
 canvas{display:block;width:100%;height:100%}
-#loading{position:fixed;inset:0;display:grid;place-items:center;color:#777;background:radial-gradient(circle at 50% 35%,#fff 0,#fbfbf9 48%,#f4f3f0 100%);font-size:12px;letter-spacing:.02em}
+#loading{position:fixed;inset:0;display:grid;place-items:center;color:#555;background:radial-gradient(circle at 50% 28%,#ffffff 0,#f8f6f2 48%,#ece9e4 100%);font-size:12px;letter-spacing:.02em}
 #err{position:fixed;left:18px;right:18px;bottom:18px;padding:12px 14px;border:1px solid #ead8d8;background:rgba(255,249,249,.96);color:#8b4d4d;border-radius:10px;font-size:11px;display:none}
 </style>
 <script type="importmap">{
@@ -24,50 +24,54 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const params = new URLSearchParams(location.search);
-const src = params.get('src') || '/models/fabricnow-genesis9-female.fbx';
+const src = params.get('src') || '/models/male.fbx';
 const angle = Number(params.get('angle') || 0) * Math.PI / 180;
 const scale = Number(params.get('scale') || 1);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xfafaf8);
+scene.background = new THREE.Color(0xf5f3ef);
 
-const camera = new THREE.PerspectiveCamera(27, innerWidth / innerHeight, 0.01, 1000);
-camera.position.set(0, 1.15, 3.25);
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.01, 1000);
+camera.position.set(0, 1.25, 3.2);
 
-const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, preserveDrawingBuffer:false });
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.25;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-const hemi = new THREE.HemisphereLight(0xffffff, 0xe7e3dc, 2.0); scene.add(hemi);
-const key = new THREE.DirectionalLight(0xffffff, 3.0); key.position.set(2.5,4.5,3.5); scene.add(key);
-const fill = new THREE.DirectionalLight(0xf4f1ed, 1.2); fill.position.set(-3,2,1); scene.add(fill);
-const rim = new THREE.DirectionalLight(0xffffff, 1.3); rim.position.set(0,3,-4); scene.add(rim);
+// Large, soft studio lighting: key + front fill + side fill + rim + ambient.
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d2ca, 2.2));
+const key = new THREE.DirectionalLight(0xffffff, 4.6); key.position.set(2.8,5.2,4.2); key.castShadow=true; key.shadow.mapSize.set(2048,2048); scene.add(key);
+const front = new THREE.DirectionalLight(0xfff7ef, 2.8); front.position.set(0,2.8,5.5); scene.add(front);
+const fill = new THREE.DirectionalLight(0xeaf1ff, 2.4); fill.position.set(-4,3,1.5); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 3.2); rim.position.set(1.5,4,-5); scene.add(rim);
 
 const floor = new THREE.Mesh(
-  new THREE.CircleGeometry(1.25, 96),
-  new THREE.MeshBasicMaterial({color:0xe9e7e2, transparent:true, opacity:.22, depthWrite:false})
+  new THREE.CircleGeometry(2.2, 128),
+  new THREE.MeshStandardMaterial({color:0xdedbd5, roughness:.92, metalness:0, transparent:true, opacity:.78})
 );
-floor.rotation.x = -Math.PI/2; floor.position.y = 0; scene.add(floor);
+floor.rotation.x = -Math.PI/2; floor.position.y = -0.002; floor.receiveShadow = true; scene.add(floor);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.dampingFactor = .07;
 controls.enablePan = false;
-controls.minDistance = 1.2;
-controls.maxDistance = 7;
-controls.minPolarAngle = Math.PI * .30;
-controls.maxPolarAngle = Math.PI * .62;
-controls.target.set(0,1.05,0);
+controls.minDistance = .7;
+controls.maxDistance = 9;
+controls.minPolarAngle = Math.PI * .22;
+controls.maxPolarAngle = Math.PI * .66;
+controls.target.set(0,1,0);
 
 function normalizeModel(obj){
   const box = new THREE.Box3().setFromObject(obj);
   const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
   const maxDim = Math.max(size.x,size.y,size.z) || 1;
-  const base = 1.72 / maxDim;
+  const base = 1.92 / maxDim;
   obj.scale.multiplyScalar(base * scale);
   const b2 = new THREE.Box3().setFromObject(obj);
   const c2 = b2.getCenter(new THREE.Vector3());
@@ -79,11 +83,15 @@ function normalizeModel(obj){
 
 new FBXLoader().load(src, (model)=>{
   model.traverse((child)=>{
-    if(child.isMesh){
-      child.castShadow = true; child.receiveShadow = true;
-      if(Array.isArray(child.material)) child.material.forEach(m=>{if(m) m.needsUpdate=true});
-      else if(child.material) child.material.needsUpdate=true;
-    }
+    if(!child.isMesh) return;
+    child.castShadow = true; child.receiveShadow = true;
+    const mats = Array.isArray(child.material) ? child.material : [child.material];
+    mats.forEach(m=>{
+      if(!m) return;
+      m.needsUpdate = true;
+      if('roughness' in m) m.roughness = Math.max(.5, m.roughness ?? .7);
+      if('metalness' in m) m.metalness = Math.min(.08, m.metalness ?? 0);
+    });
   });
   normalizeModel(model);
   model.rotation.y = angle;
@@ -93,14 +101,17 @@ new FBXLoader().load(src, (model)=>{
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const radius = Math.max(size.x,size.y,size.z) * .58;
-    camera.position.set(0, center.y + size.y*.03, Math.max(2.0, radius*3.0));
-    controls.target.set(center.x, center.y + size.y*.02, center.z);
+    const height = Math.max(size.y, .1);
+    const distance = Math.max(1.8, height * 1.58);
+    camera.position.set(0, center.y + height*.04, distance);
+    camera.lookAt(center.x, center.y + height*.02, center.z);
+    camera.updateProjectionMatrix();
+    controls.target.set(center.x, center.y + height*.02, center.z);
     controls.update();
   });
 }, undefined, (error)=>{
   const el=document.getElementById('err'); el.style.display='block';
-  el.textContent='The Genesis 9 FBX could not be loaded in this browser viewer. '+(error?.message || 'Check the exported FBX and its referenced assets.');
+  el.textContent='This FBX could not be loaded in the browser viewer. '+(error?.message || 'Check the exported FBX and its referenced assets.');
   document.getElementById('loading').style.display='none';
 });
 
