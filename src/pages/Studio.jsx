@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, RotateCcw, Sparkles, Check, ImagePlus, Ruler, Layers3, ShieldCheck } from 'lucide-react';
+import { ArrowRight, RotateCcw, Sparkles, ImagePlus, Ruler, Layers3, ShieldCheck, Box, CheckCircle2 } from 'lucide-react';
 import { api } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { Segmented } from '../components/ui.jsx';
 import { Dropzone, usePreview } from '../components/Dropzone.jsx';
 import GarmentSelect, { garmentLabel, useCatalog } from '../components/GarmentSelect.jsx';
 import JobView from '../components/JobView.jsx';
+import FitModelPanel from '../components/FitModelPanel.jsx';
 
 const LININGS = [{ value: 'none', label: 'None' }, { value: 'partial', label: 'Partial' }, { value: 'full', label: 'Full' }];
 const MAX_NOTES = 500;
@@ -19,6 +20,9 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   const [garment, setGarment] = useState('Auto-detect');
   const [lining, setLining] = useState('none');
   const [notes, setNotes] = useState('');
+  const [gender, setGender] = useState('female');
+  const [size, setSize] = useState('M');
+  const [fitSystem, setFitSystem] = useState('Standard');
   const [busy, setBusy] = useState(false);
   const [secs, setSecs] = useState(0);
   const [error, setError] = useState('');
@@ -32,7 +36,10 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
     return () => clearInterval(id);
   }, [busy]);
 
-  const reset = () => { setFile(null); setSwatch(null); setNotes(''); setGarment('Auto-detect'); setLining('none'); setResult(null); setError(''); };
+  const reset = () => {
+    setFile(null); setSwatch(null); setNotes(''); setGarment('Auto-detect'); setLining('none');
+    setGender('female'); setSize('M'); setFitSystem('Standard'); setResult(null); setError('');
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -44,8 +51,9 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
       fd.append('file', file);
       if (swatch) fd.append('swatch', swatch);
       fd.append('garment', garment); fd.append('notes', notes); fd.append('lining', lining);
+      fd.append('model_gender', gender); fd.append('model_size', size); fd.append('fit_system', fitSystem);
       const d = await api('/api/workspace/patterns', { method: 'POST', body: fd });
-      setResult(d); onDone(d); toast.success('Pattern job started.');
+      setResult(d); onDone(d); toast.success('Pattern job started with your fit model.');
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
@@ -53,91 +61,68 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   const ready = Boolean(file);
   const gLabel = garmentLabel(catalog, garment);
 
+  if (result) {
+    return <div className="pattern-studio-page">
+      <header className="studio-head">
+        <div><div className="studio-eyebrow">PATTERN STUDIO · PRODUCTION WORKSPACE</div><h2>Review the generated pattern, then grade and prepare production files.</h2><p>Your selected {gender} {size} fit model and fit system were included with the generation request.</p></div>
+        <button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15}/> Start another</button>
+      </header>
+      <div className="studio-result-strip"><span><CheckCircle2 size={15}/> Pattern generated</span><b>{gLabel}</b><span>{gender === 'female' ? 'Female' : 'Male'} · {size}</span><span>{fitSystem}</span><button className="btn btn-ghost" onClick={() => setPage('projects')}>All projects <ArrowRight size={15}/></button></div>
+      <JobView jobId={result.id} initial={result} onJob={onJob} onDeleted={(id) => { onDeleted(id); reset(); }} />
+    </div>;
+  }
+
   return (
     <div className="pattern-studio-page">
       <header className="studio-head">
         <div>
-          <div className="studio-eyebrow">PATTERN STUDIO · PRODUCTION WORKSPACE</div>
-          <h2>Turn a garment reference into production-ready patterns.</h2>
-          <p>Upload a clear garment image, define the construction intent, and let the pattern engine prepare the pieces, SVGs and export package.</p>
+          <div className="studio-eyebrow">PATTERN STUDIO · 2D → 3D → PRODUCTION</div>
+          <h2>Build, fit and prepare a garment from one working flow.</h2>
+          <p>Bring in the garment reference, define construction, fit it on a selectable 3D body, then generate the pattern and production package.</p>
         </div>
-        <div className="studio-head-actions">
-          <span className="studio-status"><i/> Pattern engine connected through FabricNow API</span>
-          <button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15}/> Reset</button>
-        </div>
+        <div className="studio-head-actions"><span className="studio-status"><i/> Pattern engine connected</span><button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15}/> Reset</button></div>
       </header>
+
       <div className="studio-steps">
-        {[['01','Reference','Add garment imagery',ImagePlus],['02','Configure','Define construction',Ruler],['03','Generate','Create pattern assets',Layers3],['04','Review','Check and export',ShieldCheck]].map(([n,t,d,I],i)=><div className={ready&&i<2?'active':''} key={n}><b>{n}</b><span><strong>{t}</strong><small>{d}</small></span>{i<3&&<ArrowRight size={14}/>}</div>)}
+        {[['01','Reference','Garment imagery',ImagePlus],['02','Configure','Construction intent',Ruler],['03','3D Fit','Model + size',Box],['04','Generate','Pattern + grading',Layers3],['05','Review','Production output',ShieldCheck]].map(([n,t,d,I],i)=><div className={ready && i < 3 ? 'active' : ''} key={n}><b>{n}</b><span><strong>{t}</strong><small>{d}</small></span>{i<4&&<ArrowRight size={14}/>}</div>)}
       </div>
-      <div className="studio-main-grid">
-      {result ? (
-        <div className="stack">
-          <JobView jobId={result.id} initial={result} onJob={onJob} onDeleted={(id) => { onDeleted(id); reset(); }} />
-          <div className="done-actions">
-            <button className="btn btn-ghost" onClick={() => setPage('projects')}>All projects <ArrowRight size={16} /></button>
-            <button className="btn btn-ghost" onClick={reset}><RotateCcw size={16} /> Start another</button>
-          </div>
-        </div>
-      ) : (
-        <form className="panel composer studio-composer" onSubmit={submit}>
-          <div className="step studio-step">
-            <div className="step-head"><div><span className="studio-section-kicker">01 · REFERENCE</span><h3>Garment photo</h3></div><span>Front-facing, JPG, PNG or WebP, up to 10 MB</span></div>
-            <Dropzone big file={file} preview={photo} onFile={(f) => { setFile(f); setError(''); }} title="Drop a garment photo here" hint="or click to browse" scanning={busy} />
-          </div>
 
-          <div className="step studio-step">
-            <div className="step-head"><div><span className="studio-section-kicker">02 · MATERIAL</span><h3>Fabric reference <em>optional</em></h3></div><span>A close-up shows weave and print</span></div>
-            <Dropzone file={swatch} preview={fabric} onFile={setSwatch} title="Add a fabric close-up" hint="Drop or click" />
-          </div>
+      <form className="studio-workspace" onSubmit={submit}>
+        <div className="studio-form-column">
+          <section className="studio-card">
+            <div className="studio-card-head"><div><span className="studio-section-kicker">01 · REFERENCE</span><h3>Garment and fabric</h3></div><span>Clear front or 3/4 garment photo · max 10 MB</span></div>
+            <div className="studio-upload-grid">
+              <Dropzone big file={file} preview={photo} onFile={(f) => { setFile(f); setError(''); }} title="Drop a garment photo here" hint="or click to browse" scanning={busy} />
+              <Dropzone file={swatch} preview={fabric} onFile={setSwatch} title="Add fabric reference" hint="Optional · close-up of weave or print" />
+            </div>
+          </section>
 
-          <div className="step studio-step">
-            <div className="step-head"><div><span className="studio-section-kicker">03 · CONSTRUCTION</span><h3>Garment type</h3></div><span>Picking the exact style helps the AI plan the right pieces</span></div>
-            <GarmentSelect value={garment} onChange={setGarment} />
-          </div>
+          <section className="studio-card">
+            <div className="studio-card-head"><div><span className="studio-section-kicker">02 · CONSTRUCTION</span><h3>Garment intent</h3></div><span>Give the engine enough context to plan the pieces correctly</span></div>
+            <div className="studio-config-grid">
+              <div><label className="fit-control-label">Garment type</label><GarmentSelect value={garment} onChange={setGarment} /></div>
+              <div><label className="fit-control-label">Lining</label><Segmented label="Lining" options={LININGS} value={lining} onChange={setLining} /></div>
+            </div>
+            <label className="field studio-notes-field"><span>Designer notes <em>{notes.length}/{MAX_NOTES}</em></span><textarea rows={3} maxLength={MAX_NOTES} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Construction details, fit notes, special panels, closures, neckline or sleeve changes" /></label>
+          </section>
 
-          <div className="step studio-step">
-            <div className="step-head"><div><span className="studio-section-kicker">04 · FINISHING</span><h3>Lining</h3></div></div>
-            <Segmented label="Lining" options={LININGS} value={lining} onChange={setLining} />
-          </div>
-
-          <div className="step studio-step">
-            <div className="step-head"><div><span className="studio-section-kicker">05 · DESIGN INTENT</span><h3>Designer notes</h3></div><span>{notes.length}/{MAX_NOTES}</span></div>
-            <textarea className="notes" rows={4} maxLength={MAX_NOTES} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Construction details, fit notes, special panels" />
-          </div>
+          <FitModelPanel gender={gender} setGender={setGender} size={size} setSize={setSize} fitSystem={fitSystem} setFitSystem={setFitSystem} />
 
           {error && <div className="error" role="alert">{error}</div>}
-
-          <div className="composer-bar">
-            <p>{ready ? `${gLabel}${lining !== 'none' ? `, ${lining} lining` : ''}` : 'Add a garment photo to begin'}</p>
-            <button className={`btn btn-primary btn-lg ${ready ? 'glow' : ''}`} disabled={busy || !ready}>
-              <Sparkles size={16} /> {busy ? 'Submitting…' : 'Generate pattern'}
-            </button>
+          <div className="studio-submit-bar">
+            <div><span className="studio-submit-label">READY TO GENERATE</span><strong>{ready ? `${gLabel} · ${gender === 'female' ? 'Female' : 'Male'} ${size}` : 'Add a garment reference first'}</strong><small>{ready ? `${cap(lining)} lining · ${fitSystem} fit system` : 'The 3D model will be included in the pattern request.'}</small></div>
+            <button className="btn btn-primary btn-lg" disabled={busy || !ready}><Sparkles size={16}/> {busy ? `Generating · ${secs}s` : 'Generate pattern + fit package'}</button>
           </div>
-        </form>
-      )}
-      </div>
+        </div>
 
-      <aside className={`brief ${busy ? 'busy' : ''}`} aria-label="Pattern brief">
-        <div className="brief-head">
-          <span>Pattern brief</span>
-          <span className={`ready ${ready ? 'on' : ''}`}>{result ? 'Submitted' : busy ? 'Working' : ready ? 'Ready' : 'Waiting for photo'}</span>
-        </div>
-        <div className="brief-photo">
-          {photo ? <img src={photo} alt="Garment preview" /> : <img src="/logo-icon.svg" alt="" className="float" />}
-          {busy && <span className="scan" />}
-        </div>
-        <dl className="brief-list">
-          <div><dt>Garment</dt><dd>{gLabel}</dd></div>
-          <div><dt>Lining</dt><dd>{cap(lining)}</dd></div>
-          <div><dt>Fabric reference</dt><dd>{swatch ? 'Added' : 'None'}</dd></div>
-          <div><dt>Notes</dt><dd>{notes.trim() ? `${notes.trim().length} characters` : 'None'}</dd></div>
-        </dl>
-        {busy ? (
-          <div className="brief-foot"><div className="progress"><i /></div><span>Submitting · {secs}s</span></div>
-        ) : (
-          <p className="brief-foot-text">The AI reads your photo, plans every piece, draws the sheet, checks it, then exports pieces, SVGs and a manifest as a ZIP.</p>
-        )}
-      </aside>
+        <aside className={`brief ${busy ? 'busy' : ''}`} aria-label="Pattern production brief">
+          <div className="brief-head"><span>Production brief</span><span className={`ready ${ready ? 'on' : ''}`}>{busy ? 'Generating' : ready ? 'Ready' : 'Waiting'}</span></div>
+          <div className="brief-photo">{photo ? <img src={photo} alt="Garment preview" /> : <img src="/logo-icon.svg" alt="" className="float" />}{busy && <span className="scan" />}</div>
+          <div className="brief-model-summary"><div><Box size={15}/><span><strong>3D fit model</strong><small>{gender === 'female' ? 'Female' : 'Male'} · {size} · {fitSystem}</small></span></div><div><Ruler size={15}/><span><strong>Production route</strong><small>2D pattern → grading → DXF / SVG</small></span></div></div>
+          <dl className="brief-list"><div><dt>Garment</dt><dd>{gLabel}</dd></div><div><dt>Lining</dt><dd>{cap(lining)}</dd></div><div><dt>Fabric</dt><dd>{swatch ? 'Added' : 'None'}</dd></div><div><dt>Designer notes</dt><dd>{notes.trim() ? `${notes.trim().length} chars` : 'None'}</dd></div></dl>
+          {busy ? <div className="brief-foot"><div className="progress"><i /></div><span>Generating · {secs}s</span></div> : <p className="brief-foot-text">The generation request carries your reference, construction intent, fit model, size and fit system. Finished pattern jobs can then be graded and exported from the result view.</p>}
+        </aside>
+      </form>
     </div>
   );
 }

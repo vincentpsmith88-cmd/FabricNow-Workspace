@@ -151,7 +151,7 @@ router.post("/patterns", requireAuth, upload.fields([
     const form = new FormData();
     addFile(form, req.files.file[0]);
     if (req.files.swatch?.[0]) addFile(form, req.files.swatch[0]);
-    for (const key of ["garment", "notes", "lining"]) {
+    for (const key of ["garment", "notes", "lining", "model_gender", "model_size", "fit_system"]) {
       if (req.body[key] !== undefined) form.append(key, String(req.body[key]));
     }
     await relayJson(res, await workerFetch(req, "/api/jobs", { method: "POST", body: form }), normalizeJob);

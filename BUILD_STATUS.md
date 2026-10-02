@@ -1,15 +1,20 @@
-# FabricNow build status — API/settings redesign
+# FabricNow — Fashion Avatar / Pattern Studio Update
 
-## Fixed
-- Fixed the API Keys runtime crash: the header action now calls the component's `create` handler instead of an undefined `onCreate` variable.
-- Kept the Asset Library-style Developer empty state for API Keys.
-- Added a shared Product Empty State system and applied it to Analytics, Usage, Billing, Company, Settings, and Help & Docs.
-- Usage and Billing only render live values when backend connection status exists; no placeholder metrics are fabricated.
-- Company shows the empty state when no company identity is stored.
-- Help & Docs now uses the same empty-state hero plus live external documentation links.
-- Settings has a workspace-preferences empty-state hero followed by real profile/appearance controls.
+## Implemented
+- Removed the previous 3DAssets.dev mannequin dependency.
+- Added local FabricNow female and male fashion-fitting avatar GLB assets.
+- Redesigned the 3D Fit panel around a clean, neutral fashion-CAD presentation inspired by the reference workflow the user provided.
+- Added Female/Male avatar selection.
+- Added XS, S, M, L, XL and 2XL size controls with body/height metadata and visual scaling.
+- Added company fit-system selection and carried the selected model gender, size and fit system into the existing pattern-generation request.
+- Added Front, 3/4, Side and Back camera presets plus 15-degree rotation controls and direct drag rotation through model-viewer.
+- Added local studio lighting/floor treatment and a compact production-oriented model label.
+- Added Google model-viewer runtime to index.html.
 
-## Verification
-- Source search confirms no undefined `onCreate` reference remains in the API Keys page; only the local DeveloperEmpty prop and its passed `create` callback remain.
-- A production rebuild could not be run in this sandbox because the bundled dependency tree contains placeholder directories without npm package contents, and npm cannot download the missing packages (registry access is unavailable).
-- The existing dist bundle already contains the corrected API Keys header handler, but the new source-page redesigns require a normal `npm install`/`npm ci` and `npm run build` in a network-enabled development environment.
+## Important
+The avatar is an original FabricNow neutral clay-style fitting mesh built for this workspace. It is designed to match the visual *category* of professional fashion-CAD avatars, not to copy LA VIPÈRE's proprietary model or interface.
+
+The current backend pattern endpoint still receives the avatar selection metadata. Full cloth-to-avatar physical drape simulation requires a 3D garment simulation service/engine and a backend output that returns a garment GLB/USDZ or equivalent; the viewer is prepared for that next integration.
+
+## Build verification
+A fresh Vite production build was not available in this environment because the uploaded workspace does not contain an installed Vite binary and npm registry access is unavailable. Source and asset integrity were checked locally.
