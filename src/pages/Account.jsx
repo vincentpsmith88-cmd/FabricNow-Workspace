@@ -1,5 +1,6 @@
 import React from 'react';
 import { ExternalLink, Sun, Moon } from 'lucide-react';
+import EmptyPage, { ExternalAction } from './EmptyPage.jsx';
 import { useTheme } from '../theme.js';
 import { PLAN, money } from '../api.js';
 import { companyName } from '../usage.js';
@@ -7,6 +8,7 @@ import { companyName } from '../usage.js';
 const SITE = 'https://fabricnow.tonasel.com';
 
 export function Company({ user }) {
+  if (!companyName(user)) return <EmptyPage type="company" eyebrow="COMPANY" title="Your company profile is empty" body="No company identity is stored for this workspace yet. FabricNow will show it here once the backend profile contains the organization details." action={<ExternalAction href={`${SITE}/contact`}>Contact FabricNow</ExternalAction>} />;
   return (
     <section className="panel">
       <div className="panel-head"><h3>Workspace</h3></div>
@@ -24,6 +26,7 @@ export function SettingsPage({ user }) {
   const [theme, toggleTheme] = useTheme();
   return (
     <div className="settings-stack">
+      <EmptyPage type="settings" eyebrow="SETTINGS" title="Workspace preferences" body="Your account details are read from the signed-in workspace. Device appearance is saved locally; no placeholder settings are presented." />
       <section className="panel">
         <div className="panel-head"><div><h3>Your profile</h3><p className="muted small-text">Personal details for your FabricNow workspace.</p></div></div>
         <dl className="kv">
@@ -47,21 +50,16 @@ export function SettingsPage({ user }) {
 
 export function Help() {
   const links = [
-    ['API for Developers', 'Endpoints, tiers and overage rates', `${SITE}/developers`],
-    ['Help Center', 'Answers to common questions', `${SITE}/help`],
-    ['Download & Licensing', 'What you can do with each file', `${SITE}/licensing`],
+    ['API for Developers', 'Endpoints, authentication and usage', `${SITE}/developers`],
+    ['Help Center', 'Answers to common workspace questions', `${SITE}/help`],
+    ['Download & Licensing', 'What you can do with generated files', `${SITE}/licensing`],
     ['Contact us', 'Talk to the FabricNow team', `${SITE}/contact`],
   ];
-  return (
-    <section className="panel">
-      <ul className="rows link-rows">
-        {links.map(([t, d, href]) => (
-          <li key={t}>
-            <div><strong>{t}</strong><small>{d}</small></div>
-            <a className="btn btn-ghost" href={href} target="_blank" rel="noreferrer">Open <ExternalLink size={14} /></a>
-          </li>
-        ))}
-      </ul>
+  return <div className="help-page">
+    <EmptyPage type="help" eyebrow="HELP & DOCS" title="Your knowledge hub is ready" body="Use the live documentation and support resources below. FabricNow keeps this workspace free of invented articles or offline placeholder content." />
+    <section className="panel help-links-panel">
+      <div className="panel-head"><div><h3>Resources</h3><p className="muted small-text">Open the source maintained by the FabricNow team.</p></div></div>
+      <ul className="rows link-rows">{links.map(([t,d,href])=><li key={t}><div><strong>{t}</strong><small>{d}</small></div><a className="btn btn-ghost" href={href} target="_blank" rel="noreferrer">Open <ExternalLink size={14}/></a></li>)}</ul>
     </section>
-  );
+  </div>;
 }

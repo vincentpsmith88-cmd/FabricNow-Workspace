@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart3 } from 'lucide-react';
-import { Empty, Segmented } from '../components/ui.jsx';
+import { Segmented } from '../components/ui.jsx';
+import EmptyPage from './EmptyPage.jsx';
 import { LineChart, BarChart } from '../components/Charts.jsx';
 import { dailySeries, tally, cap } from '../usage.js';
 
@@ -13,7 +14,7 @@ export default function Analytics({ jobs }) {
   const byStatus = useMemo(() => tally(jobs, (j) => cap(j.status || 'processing')), [jobs]);
 
   if (!jobs.length) {
-    return <section className="panel"><Empty icon={BarChart3} title="Nothing to chart yet" body="Run a few pattern jobs and your trends show up here." /></section>;
+    return <EmptyPage type="analytics" eyebrow="ANALYTICS" title="Your workspace story starts here" body="Run a few pattern or capture jobs and FabricNow will turn real activity into production trends. No sample metrics are shown." />;
   }
   return (
     <>

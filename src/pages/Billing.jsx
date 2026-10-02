@@ -3,11 +3,13 @@ import { Check } from 'lucide-react';
 import { api, PLAN, money } from '../api.js';
 import { getUsage } from '../usage.js';
 import { useToast } from '../toast.jsx';
+import EmptyPage from './EmptyPage.jsx';
 
 export default function Billing({ apiStatus }) {
   const toast = useToast();
   const [busy, setBusy] = useState('');
   const { active } = getUsage(apiStatus);
+  if (!apiStatus) return <EmptyPage type="billing" eyebrow="BILLING" title="Billing is waiting for a live connection" body="Subscription and payment details are intentionally empty until FabricNow receives a confirmed billing status." />;
 
   const go = async (key, path, body) => {
     setBusy(key);

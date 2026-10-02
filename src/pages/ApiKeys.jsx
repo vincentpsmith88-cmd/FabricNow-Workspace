@@ -3,7 +3,6 @@ import { KeyRound, Copy, Plus, Images, Sparkles, Layers3 } from 'lucide-react';
 import { api } from '../api.js';
 import { fmtDate } from '../usage.js';
 import { useToast } from '../toast.jsx';
-import { Empty } from '../components/ui.jsx';
 
 function DeveloperEmpty({onCreate}){return <div className="library-empty fashion-module-empty developer-empty"><div className="library-empty-visual"><div className="library-empty-orb"><KeyRound size={28}/></div><span className="empty-float empty-float-a"><Images size={16}/></span><span className="empty-float empty-float-b"><Sparkles size={16}/></span><span className="empty-float empty-float-c"><Layers3 size={16}/></span></div><div className="library-empty-copy"><span className="library-empty-label">DEVELOPER WORKSPACE IS READY</span><h4>No API keys yet</h4><p>Create a server-side credential when you are ready to connect FabricNow to your own application. Nothing is shown as connected until the backend confirms it.</p><div className="library-empty-actions"><button className="btn btn-primary" onClick={onCreate}>Create first key <Plus size={15}/></button></div></div></div>}
 
@@ -47,7 +46,7 @@ export default function ApiKeys() {
     <section className="panel">
       <div className="panel-head">
         <div><h3>API credentials</h3><p className="muted small-text">Use these on your server only. Never ship a key in browser code.</p></div>
-        <button className="btn btn-primary" onClick={onCreate} disabled={busy}><Plus size={16} /> {busy ? 'Creating…' : 'Create key'}</button>
+        <button className="btn btn-primary" onClick={create} disabled={busy}><Plus size={16} /> {busy ? 'Creating…' : 'Create key'}</button>
       </div>
 
       {secret && (

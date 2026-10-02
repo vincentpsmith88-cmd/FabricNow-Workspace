@@ -2,10 +2,12 @@ import React from 'react';
 import { PLAN, money } from '../api.js';
 import { getUsage } from '../usage.js';
 import { Meter } from '../components/ui.jsx';
+import EmptyPage from './EmptyPage.jsx';
 
 export default function Usage({ apiStatus, setPage }) {
   const u = getUsage(apiStatus);
   const low = u.over * PLAN.overageBackground;
+  if (!apiStatus) return <EmptyPage type="usage" eyebrow="USAGE" title="Usage will appear once billing is connected" body="FabricNow only shows usage confirmed by the backend. Connect the workspace billing service to see processed images, allowance and overage activity." action={<button className="btn btn-primary" onClick={() => setPage('billing')}>Open billing</button>} />;
   const high = u.over * PLAN.overageSegmentation;
   return (
     <div className="cols grid-2">
