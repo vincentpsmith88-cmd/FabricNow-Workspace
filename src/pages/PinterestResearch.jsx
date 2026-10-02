@@ -1,0 +1,44 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, Bookmark, ExternalLink, Image as ImageIcon, Link2, RefreshCw, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { api } from '../api.js';
+
+const KEY = 'fabricnow.inspiration.library';
+function readSaved(){ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } }
+function saveSaved(items){ try { localStorage.setItem(KEY, JSON.stringify(items.slice(0,100))); } catch {} }
+
+function Card({pin,onSave,onStudio,saved}){
+  const image=pin.imageUrl || pin.mediaUrl;
+  return <article className="pin-card">
+    <div className="pin-image-wrap">{image?<img src={image} alt={pin.title||pin.altText||'Pinterest inspiration'} loading="lazy"/>:<div className="pin-image-empty"><ImageIcon size={28}/></div>}</div>
+    <div className="pin-card-body">
+      <div className="pin-card-title">{pin.title||pin.description||'Pinterest inspiration'}</div>
+      <div className="pin-source"><span>Pinterest</span>{pin.boardOwner?.username?` · @${pin.boardOwner.username}`:''}</div>
+      <div className="pin-actions">
+        <button className="btn btn-primary btn-sm" onClick={()=>onStudio(pin)}><Sparkles size={14}/> Pattern Studio</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>onSave(pin)}>{saved?<Bookmark size={14} fill="currentColor"/>:<Bookmark size={14}/>} {saved?'Saved':'Save'}</button>
+        {pin.link&&<a className="btn btn-ghost btn-sm" href={pin.link} target="_blank" rel="noreferrer"><ExternalLink size={14}/> Source</a>}
+      </div>
+      {pin.link&&<button className="source-copy" onClick={()=>navigator.clipboard?.writeText(pin.link)}><Link2 size={12}/> Copy source link</button>}
+    </div>
+  </article>
+}
+
+export default function PinterestResearch({setPage,libraryOnly=false}){
+  const [query,setQuery]=useState(''); const [submitted,setSubmitted]=useState(''); const [items,setItems]=useState([]); const [saved,setSaved]=useState(readSaved); const [loading,setLoading]=useState(false); const [error,setError]=useState(''); const [configured,setConfigured]=useState(null);
+  useEffect(()=>{ if(!libraryOnly) return; api('/api/companies/inspirations').then(d=>{const rows=(d.inspirations||[]).map(x=>({id:x.externalId||x.id,title:x.title,description:x.description,imageUrl:x.imageUrl,link:x.sourceUrl,source:'Pinterest'}));setSaved(rows);saveSaved(rows)}).catch(()=>{}); },[libraryOnly]);
+  const search=async(e)=>{e?.preventDefault(); const q=query.trim(); if(!q)return; setSubmitted(q);setLoading(true);setError('');try{const d=await api(`/api/companies/pinterest/search?q=${encodeURIComponent(q)}`);setItems(d.items||[]);setConfigured(d.configured!==false);if(!d.configured&&d.searchUrl)setError('Pinterest is not connected for this company yet. Connect it in Apps & Integrations to search inside FabricNow.');}catch(e){setError(e.message)}finally{setLoading(false)}};
+  const toggleSave=async(pin)=>{const exists=saved.some(x=>x.id===pin.id);if(exists){const next=saved.filter(x=>x.id!==pin.id);setSaved(next);saveSaved(next);return;}try{await api('/api/companies/inspirations',{method:'POST',body:JSON.stringify({provider:'pinterest',externalId:pin.id,title:pin.title,description:pin.description,imageUrl:pin.imageUrl,sourceUrl:pin.link,sourceAccount:pin.boardOwner?.username||'',metadata:{altText:pin.altText||''}})});}catch{}const next=[pin,...saved.filter(x=>x.id!==pin.id)];setSaved(next);saveSaved(next)};
+  const sendToStudio=(pin)=>{try{localStorage.setItem('fabricnow.patternReference',JSON.stringify({id:pin.id,title:pin.title||'',imageUrl:pin.imageUrl||'',sourceUrl:pin.link||'',provider:'Pinterest'}));}catch{} setPage('studio');};
+  const shown=libraryOnly?saved:items;
+  return <div className="pm-page pinterest-page">
+    <div className="pm-head"><div><div className="pm-eyebrow">INSPIRATION · VISUAL RESEARCH</div><h2>{libraryOnly?'Inspiration Library':'Pinterest Research'}</h2><p>{libraryOnly?'Approved visual references saved by this browser for quick handoff into Pattern Studio.':'Search Pinterest inspiration, keep the source link, and send a reference into Pattern Studio.'}</p></div><div className="pm-actions"><a className="btn btn-ghost" href="https://www.pinterest.com/" target="_blank" rel="noreferrer"><ExternalLink size={15}/> Open Pinterest</a>{!libraryOnly&&<button className="btn btn-ghost" onClick={()=>{setQuery(submitted);search()}} disabled={!submitted||loading}><RefreshCw size={15}/> Refresh</button>}</div></div>
+    {!libraryOnly&&<>
+      <div className="pinterest-search-hero"><div className="pinterest-brand-lockup"><img src="https://cdn.simpleicons.org/pinterest/E60023" alt="Pinterest"/><div><strong>Search visual ideas</strong><span>Use garment, fabric, silhouette or collection terms.</span></div></div><form onSubmit={search} className="pinterest-search-form"><Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="e.g. indigo batik maxi dress, linen co-ord, Ankara sleeve"/><button className="btn btn-primary" disabled={loading}>{loading?'Searching…':'Search'}</button></form><div className="pinterest-safety"><ShieldCheck size={15}/><span>FabricNow keeps the source URL. Only use imagery you have permission to use in production.</span></div></div>
+      {error&&<div className="error pinterest-error">{error}<button className="btn btn-ghost btn-sm" onClick={()=>setPage('integrations')}>Open Apps & Integrations</button></div>}
+      {submitted&&configured&&<div className="pinterest-result-head"><div><strong>{items.length} references</strong><span> for “{submitted}”</span></div><span>Save a reference or send it to Pattern Studio.</span></div>}
+    </>}
+    {!libraryOnly&& !items.length && !loading && !error&&<div className="panel pinterest-empty"><Search size={25}/><h3>Start with a visual search</h3><p>Try a fabric name, garment silhouette, print, sleeve style, neckline or collection mood.</p></div>}
+    {libraryOnly&&!shown.length?<div className="panel pinterest-empty"><Bookmark size={25}/><h3>No saved inspiration yet</h3><p>Search Pinterest Research, then save references here for your company workflow.</p><button className="btn btn-primary" onClick={()=>setPage('pinterest-research')}>Research on Pinterest <ArrowRight size={15}/></button></div>:<div className="pin-grid">{shown.map(pin=><Card key={pin.id} pin={pin} saved={saved.some(x=>x.id===pin.id)} onSave={toggleSave} onStudio={sendToStudio}/>)}</div>}
+    {!libraryOnly&&<div className="pinterest-footnote"><Link2 size={14}/><span>Source links are preserved so your team can return to the original Pinterest content.</span></div>}
+  </div>
+}

@@ -7,7 +7,8 @@ export function getTheme() {
     const saved = localStorage.getItem(KEY);
     if (saved === 'dark' || saved === 'light') return saved;
   } catch {}
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  // FabricNow always starts new browsers/accounts in light mode. Dark is an explicit user choice.
+  return 'light';
 }
 
 export function applyTheme(theme = 'light', persist = false) {

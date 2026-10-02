@@ -21,6 +21,7 @@ import {Company,SettingsPage,Help} from './pages/Account.jsx';
 import FashionOS from './pages/FashionOS.jsx';
 import Assistant from './pages/Assistant.jsx';
 import {GarmentLibrary,FabricLibrary,MeasurementStudio,TechPacks,ProductionBoard,QualityControl,Integrations} from './pages/ProfessionalModules.jsx';
+import PinterestResearch from './pages/PinterestResearch.jsx';
 
 const fashionPageTabs={
  'fashion-command':'command','fashion-capture':'capture','fashion-factory':'factory','fashion-production':'production','fashion-collections':'collections','fashion-marketing':'marketing','fashion-library':'library','fashion-store':'store','fashion-team':'team'

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, RotateCcw, Sparkles, ImagePlus, Ruler, Layers3, ShieldCheck, Box, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, RotateCcw, Sparkles, ImagePlus, Ruler, Layers3, ShieldCheck, Box, CheckCircle2, ExternalLink, Link2 } from 'lucide-react';
 import { api } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { Segmented } from '../components/ui.jsx';
@@ -28,8 +28,32 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   const [secs, setSecs] = useState(0);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [reference, setReference] = useState(null);
+  const [referenceLoading, setReferenceLoading] = useState(false);
+  const [referenceError, setReferenceError] = useState('');
   const photo = usePreview(file);
   const fabric = usePreview(swatch);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('fabricnow.patternReference');
+      if (!raw) return;
+      const ref = JSON.parse(raw);
+      if (!ref?.imageUrl) return;
+      setReference(ref);
+      setReferenceLoading(true);
+      fetch(ref.imageUrl, { mode: 'cors' })
+        .then(r => { if (!r.ok) throw new Error('Reference image could not be imported automatically.'); return r.blob(); })
+        .then(blob => {
+          const ext = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
+          const imported = new File([blob], `pinterest-reference-${ref.id || 'image'}.${ext}`, { type: blob.type || 'image/jpeg' });
+          setFile(imported);
+          setError('');
+        })
+        .catch(() => setReferenceError('Pinterest kept the source image protected from direct import. You can still use it as a visual reference; download it only if you have permission, then drop the file here.'))
+        .finally(() => setReferenceLoading(false));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (!busy) { setSecs(0); return undefined; }
@@ -92,6 +116,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
         <div className="studio-form-column">
           <section className="studio-card">
             <div className="studio-card-head"><div><span className="studio-section-kicker">01 · REFERENCE</span><h3>Garment and fabric</h3></div><span>Clear front or 3/4 garment photo · max 10 MB</span></div>
+            {reference && <div className="studio-reference-callout"><div className="studio-reference-thumb"><img src={reference.imageUrl} alt={reference.title || 'Pinterest reference'} /></div><div><span className="studio-section-kicker">PINTEREST REFERENCE</span><strong>{reference.title || 'Visual inspiration'}</strong><p>{referenceLoading ? 'Importing the reference into Pattern Studio…' : referenceError || 'The source link is preserved with this working reference.'}</p><div className="studio-reference-actions">{reference.sourceUrl&&<a href={reference.sourceUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm"><ExternalLink size={13}/> Open source</a>}<button type="button" className="btn btn-ghost btn-sm" onClick={()=>navigator.clipboard?.writeText(reference.sourceUrl||'')}><Link2 size={13}/> Copy source</button></div></div></div>}
             <div className="studio-upload-grid">
               <Dropzone big file={file} preview={photo} onFile={(f) => { setFile(f); setError(''); }} title="Drop a garment photo here" hint="or click to browse" scanning={busy} />
               <Dropzone file={swatch} preview={fabric} onFile={setSwatch} title="Add fabric reference" hint="Optional · close-up of weave or print" />
