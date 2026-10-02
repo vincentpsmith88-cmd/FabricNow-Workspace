@@ -1,17 +1,37 @@
 import { useEffect, useState } from 'react';
 
-export function getTheme() { return 'light'; }
+const KEY = 'fabricnow.theme';
+
+export function getTheme() {
+  try {
+    const saved = localStorage.getItem(KEY);
+    if (saved === 'dark' || saved === 'light') return saved;
+  } catch {}
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
 
 export function applyTheme(theme = 'light', persist = false) {
-  document.documentElement.dataset.theme = 'light';
-  document.documentElement.style.colorScheme = 'light';
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#FFFFFF');
-  if (persist) { try { localStorage.setItem('fabricnow.theme', 'light'); } catch {} }
+  const next = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = next;
+  document.documentElement.style.colorScheme = next;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute(
+    'content',
+    next === 'dark' ? '#12111D' : '#302C4D'
+  );
+  if (persist) {
+    try { localStorage.setItem(KEY, next); } catch {}
+  }
+  return next;
 }
 
 export function useTheme() {
-  const [theme] = useState('light');
-  useEffect(() => { applyTheme('light'); }, []);
-  const noop = () => {};
-  return [theme, noop];
+  const [theme, setTheme] = useState(() => getTheme());
+
+  useEffect(() => {
+    applyTheme(theme, true);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(current => current === 'dark' ? 'light' : 'dark');
+
+  return [theme, toggleTheme, setTheme];
 }

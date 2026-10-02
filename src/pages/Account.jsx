@@ -1,5 +1,6 @@
 import React from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../theme.js';
 import { PLAN, money } from '../api.js';
 import { companyName } from '../usage.js';
 
@@ -20,14 +21,27 @@ export function Company({ user }) {
 }
 
 export function SettingsPage({ user }) {
+  const [theme, toggleTheme] = useTheme();
   return (
-    <section className="panel">
-      <div className="panel-head"><h3>Your profile</h3></div>
-      <dl className="kv">
-        <div><dt>Name</dt><dd>{user.name}</dd></div>
-        <div><dt>Email</dt><dd>{user.email}</dd></div>
-      </dl>
-    </section>
+    <div className="settings-stack">
+      <section className="panel">
+        <div className="panel-head"><div><h3>Your profile</h3><p className="muted small-text">Personal details for your FabricNow workspace.</p></div></div>
+        <dl className="kv">
+          <div><dt>Name</dt><dd>{user.name}</dd></div>
+          <div><dt>Email</dt><dd>{user.email}</dd></div>
+        </dl>
+      </section>
+      <section className="panel appearance-panel">
+        <div className="panel-head">
+          <div><h3>Appearance</h3><p className="muted small-text">Choose how FabricNow looks on this device. Your preference is saved automatically.</p></div>
+        </div>
+        <button className="appearance-choice" onClick={toggleTheme} aria-pressed={theme === 'dark'}>
+          <span className="appearance-choice-icon">{theme === 'dark' ? <Moon size={20}/> : <Sun size={20}/>}</span>
+          <span><strong>{theme === 'dark' ? 'Dark mode' : 'Light mode'}</strong><small>Currently active · Click to switch</small></span>
+          <span className="appearance-switch"><i className={theme === 'dark' ? 'on' : ''}/></span>
+        </button>
+      </section>
+    </div>
   );
 }
 

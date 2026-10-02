@@ -4,6 +4,7 @@ import App from './App.jsx';
 import { ToastProvider } from './toast.jsx';
 import './styles.css';
 import './modern.css';
+import './dark.css';
 import { installPendingButtons } from './pendingButtons.js';
 import { applyTheme, getTheme } from './theme.js';
 

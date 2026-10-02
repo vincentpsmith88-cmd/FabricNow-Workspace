@@ -1,16 +1,21 @@
-import { LayoutDashboard, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Store, Users, Bot } from 'lucide-react';
+import { LayoutDashboard, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Store, Users, Bot, Shirt, Ruler, FileText, Kanban, ShieldCheck, Database } from 'lucide-react';
 
 const fashionItems = [
   { id:'fashion-command', label:'Command Center', icon:LayoutDashboard, sub:'Fashion production at a glance.' },
   { id:'fashion-capture', label:'Product Capture', icon:Images, sub:'Capture and structure new products.' },
+  { id:'garment-library', label:'Garment Library', icon:Shirt, sub:'Search and manage every garment record.' },
+  { id:'fabric-library', label:'Fabric Library', icon:Palette, sub:'African fabrics, prints and material intelligence.' },
   { id:'fashion-factory', label:'Bulk Factory', icon:Factory, sub:'Process product batches at scale.' },
-  { id:'fashion-production', label:'Production & Tech Packs', icon:Scissors, sub:'Measurements, BOMs and production packages.' },
+  { id:'measurement-studio', label:'Measurements', icon:Ruler, sub:'Size profiles and garment fit systems.' },
+  { id:'tech-packs', label:'Tech Pack Builder', icon:FileText, sub:'Create production-ready technical packages.' },
+  { id:'production-board', label:'Production Board', icon:Kanban, sub:'Move products through the production pipeline.' },
+  { id:'quality-control', label:'AI Quality Control', icon:ShieldCheck, sub:'Audit extraction, patterns and production readiness.' },
   { id:'fashion-collections', label:'Collections', icon:BookOpen, sub:'Build collections, lookbooks and catalogues.' },
   { id:'fashion-marketing', label:'Marketing Factory', icon:Sparkles, sub:'Listings, SEO and campaign content.' },
   { id:'fashion-library', label:'Asset Library', icon:FolderOpen, sub:'Search all generated fashion assets.' },
-  { id:'fashion-store', label:'Store & API', icon:Store, sub:'Store feeds, integrations and developer API.' },
+  { id:'integrations', label:'Integrations & API', icon:Database, sub:'Connect commerce, storage and production systems.' },
   { id:'fashion-team', label:'Team & Brand', icon:Users, sub:'Team permissions and brand kit.' },
-  { id:'assistant', label:'AI Assistant', icon:Bot, sub:'Ask Gemini about your workspace.' },
+  { id:'assistant', label:'AI Assistant', icon:Bot, sub:'Ask AI about your workspace.' },
 ];
 
 export const NAV_GROUPS = [
