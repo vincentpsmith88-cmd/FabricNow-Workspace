@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { KeyRound, Copy, Plus, Images, Sparkles, Layers3 } from 'lucide-react';
+import { Spinner, Skeleton } from '../components/ui.jsx';
 import { api } from '../api.js';
 import { fmtDate } from '../usage.js';
 import { useToast } from '../toast.jsx';
@@ -46,7 +47,7 @@ export default function ApiKeys() {
     <section className="panel">
       <div className="panel-head">
         <div><h3>API credentials</h3><p className="muted small-text">Use these on your server only. Never ship a key in browser code.</p></div>
-        <button className="btn btn-primary" onClick={create} disabled={busy}><Plus size={16} /> {busy ? 'Creating…' : 'Create key'}</button>
+        <button className="btn btn-primary" onClick={create} disabled={busy} aria-busy={busy}>{busy ? <Spinner size={15}/> : <Plus size={16} />} {!busy && 'Create key'}</button>
       </div>
 
       {secret && (
@@ -56,6 +57,7 @@ export default function ApiKeys() {
         </div>
       )}
 
+      {loading ? <div className="ui-loading-panel" aria-busy="true"><div className="ui-skeleton-head"><Skeleton width="28%" height={15}/><Skeleton width="14%" height={10}/></div>{[1,2,3].map(i=><div className="ui-skeleton-row" key={i}><Skeleton width="28%" height={13}/><Skeleton width="22%" height={11}/><Skeleton width="12%" height={24}/></div>)}</div> : null}
       {items.length > 0 && (
         <ul className="rows">
           {items.map((k, i) => (

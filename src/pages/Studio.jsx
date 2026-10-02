@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, RotateCcw, Sparkles, ImagePlus, Ruler, Layers3, ShieldCheck, Box, CheckCircle2, ExternalLink, Link2 } from 'lucide-react';
 import { api } from '../api.js';
 import { useToast } from '../toast.jsx';
-import { Segmented } from '../components/ui.jsx';
+import { Segmented, Spinner } from '../components/ui.jsx';
 import { Dropzone, usePreview } from '../components/Dropzone.jsx';
 import GarmentSelect, { garmentLabel, useCatalog } from '../components/GarmentSelect.jsx';
 import JobView from '../components/JobView.jsx';
@@ -116,7 +116,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
         <div className="studio-form-column">
           <section className="studio-card">
             <div className="studio-card-head"><div><span className="studio-section-kicker">01 · REFERENCE</span><h3>Garment and fabric</h3></div><span>Clear front or 3/4 garment photo · max 10 MB</span></div>
-            {reference && <div className="studio-reference-callout"><div className="studio-reference-thumb"><img src={reference.imageUrl} alt={reference.title || 'Pinterest reference'} /></div><div><span className="studio-section-kicker">PINTEREST REFERENCE</span><strong>{reference.title || 'Visual inspiration'}</strong><p>{referenceLoading ? 'Importing the reference into Pattern Studio…' : referenceError || 'The source link is preserved with this working reference.'}</p><div className="studio-reference-actions">{reference.sourceUrl&&<a href={reference.sourceUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm"><ExternalLink size={13}/> Open source</a>}<button type="button" className="btn btn-ghost btn-sm" onClick={()=>navigator.clipboard?.writeText(reference.sourceUrl||'')}><Link2 size={13}/> Copy source</button></div></div></div>}
+            {reference && <div className="studio-reference-callout"><div className="studio-reference-thumb"><img src={reference.imageUrl} alt={reference.title || 'Pinterest reference'} /></div><div><span className="studio-section-kicker">PINTEREST REFERENCE</span><strong>{reference.title || 'Visual inspiration'}</strong><p>{referenceLoading ? <span className="inline-loading"><Spinner size={13}/> Preparing reference</span> : referenceError || 'The source link is preserved with this working reference.'}</p><div className="studio-reference-actions">{reference.sourceUrl&&<a href={reference.sourceUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm"><ExternalLink size={13}/> Open source</a>}<button type="button" className="btn btn-ghost btn-sm" onClick={()=>navigator.clipboard?.writeText(reference.sourceUrl||'')}><Link2 size={13}/> Copy source</button></div></div></div>}
             <div className="studio-upload-grid">
               <Dropzone big file={file} preview={photo} onFile={(f) => { setFile(f); setError(''); }} title="Drop a garment photo here" hint="or click to browse" scanning={busy} />
               <Dropzone file={swatch} preview={fabric} onFile={setSwatch} title="Add fabric reference" hint="Optional · close-up of weave or print" />

@@ -6,6 +6,7 @@ import {Sidebar,Topbar,BottomNav} from './components/Shell.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import UsageAlert from './components/UsageAlert.jsx';
 import {LogoMark} from './components/Logo.jsx';
+import {Skeleton} from './components/ui.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Login from './pages/Login.jsx';
 import Overview from './pages/Overview.jsx';
@@ -40,7 +41,7 @@ export default function App(){
  useEffect(()=>{if(!user)return;Promise.allSettled([api('/api/billing/api-status'),api('/api/workspace/jobs')]).then(([a,j])=>{if(a.status==='fulfilled')setApiStatus(a.value);if(j.status==='fulfilled')setJobs(j.value.jobs||[])})},[user]);
  const anyRunning=jobs.some(isRunning);useEffect(()=>{if(!user||!anyRunning)return;const id=setInterval(()=>api('/api/workspace/jobs').then(d=>setJobs(cur=>{const fresh=new Map((d.jobs||[]).map(j=>[j.id,j]));return[...(d.jobs||[]),...cur.filter(j=>!fresh.has(j.id))].sort((x,y)=>(y.createdAt||0)-(x.createdAt||0))})).catch(()=>{}),8000);return()=>clearInterval(id)},[user,anyRunning]);
  useEffect(()=>{window.scrollTo(0,0)},[page]);useEffect(()=>{localStorage.setItem('fabricnow.sidebar.collapsed',collapsed?'1':'0')},[collapsed]);
- if(checking)return <div className="splash"><LogoMark size={44}/></div>;if(!user)return <Login onAuth={setUser}/>;if(companyLoading||!companyContext)return <div className="splash"><LogoMark size={44}/><p className="muted" style={{marginTop:14}}>Loading company access…</p></div>;
+ if(checking)return <div className="splash splash-modern"><LogoMark size={44}/><div className="splash-skeleton"><Skeleton width="180px" height={12}/><Skeleton width="120px" height={9}/></div></div>;if(!user)return <Login onAuth={setUser}/>;if(companyLoading||!companyContext)return <div className="splash splash-modern"><LogoMark size={44}/><div className="splash-skeleton"><Skeleton width="210px" height={13}/><Skeleton width="150px" height={9}/><Skeleton width="180px" height={9}/></div></div>;
  const logout=()=>{localStorage.removeItem(TOKEN_KEY);selectCompany();setUser(null);setCompanyContext(null);setJobs([]);setApiStatus(null);setPage('overview')};
  const changeCompany=async(id)=>{selectCompany(id);setCompanyLoading(true);try{const ctx=await loadCompanyContext();setCompanyContext(ctx);setPage('overview')}catch(e){selectCompany();const ctx=await loadCompanyContext();setCompanyContext(ctx);setPage('overview')}finally{setCompanyLoading(false)}};const usage=getUsage(apiStatus);const addJob=j=>setJobs(js=>[j,...js.filter(x=>x.id!==j.id)]);const updateJob=j=>setJobs(js=>js.some(x=>x.id===j.id)?js.map(x=>x.id===j.id?{...x,...j}:x):[j,...js]);const removeJob=id=>setJobs(js=>js.filter(j=>j.id!==id));
  const tab=fashionPageTabs[page];
