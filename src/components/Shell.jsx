@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { LogOut, Menu, X, Plus, ChevronDown, Settings, PanelLeftClose, PanelLeftOpen, Search, LayoutDashboard, Scissors, FolderKanban, Layers } from 'lucide-react';
+import { LogOut, Menu, X, Plus, ChevronDown, Settings, PanelLeftClose, PanelLeftOpen, Search, Moon, Sun, LayoutDashboard, Scissors, FolderKanban, Layers } from 'lucide-react';
 import { Brand } from './Logo.jsx';
 import { NAV_GROUPS, NAV } from '../nav.js';
 

@@ -105,7 +105,7 @@ button.is-pending:not(.btn)>*{opacity:.2}
   box-shadow:var(--shadow-lg),inset 0 1px 0 rgba(255,255,255,.08);
 }
 .sidebar.collapsed{width:68px;padding-inline:8px}
-.side-top{padding:2px 8px 20px}
+.side-top{position:sticky;top:0;z-index:5;padding:2px 8px 20px;background:var(--surface, #fff)}
 .brand{letter-spacing:.18em;font-size:.95rem}
 .nav-group{margin-bottom:14px}
 .nav-label{padding:0 14px 7px;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(163,178,190,.8)}

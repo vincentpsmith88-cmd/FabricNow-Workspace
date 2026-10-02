@@ -70,7 +70,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em;bac
 .app{display:flex;min-height:100vh}
 .main{flex:1;min-width:0;margin-left:var(--sidebar);transition:margin-left .22s ease}.sidebar-collapsed .main{margin-left:76px}
 .sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);background:var(--navy);color:#fff;display:flex;flex-direction:column;padding:22px 14px 16px;z-index:40;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent}.sidebar::-webkit-scrollbar{width:6px}.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:99px}
-.side-top{display:flex;align-items:center;justify-content:space-between;padding:0 8px 22px}
+.side-top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:0 8px 22px;background:var(--navy)}
 .side-close{display:none;color:#fff}.side-collapse{display:grid;color:#fff}.sidebar.collapsed{width:76px;padding-inline:10px}.sidebar.collapsed .side-top{justify-content:center;padding-inline:0}.sidebar.collapsed .side-top .brand{display:none}.sidebar.collapsed .nav-label,.sidebar.collapsed .nav-item span,.sidebar.collapsed .side-meter .meter-head{display:none}.sidebar.collapsed .nav-item{justify-content:center;padding-inline:0}.sidebar.collapsed .nav-item.active:before{left:-10px}.sidebar.collapsed .side-meter{padding:12px 10px}.sidebar.collapsed .meter{margin:0}.sidebar.collapsed .nav-group{margin-bottom:12px}
 .side-nav{flex:1}
 .nav-group{margin-bottom:18px}
