@@ -1,20 +1,12 @@
-# FabricNow — Fashion Avatar / Pattern Studio Update
+# FabricNow — Genesis 9 Avatar Integration
 
-## Implemented
-- Removed the previous 3DAssets.dev mannequin dependency.
-- Added local FabricNow female and male fashion-fitting avatar GLB assets.
-- Redesigned the 3D Fit panel around a clean, neutral fashion-CAD presentation inspired by the reference workflow the user provided.
-- Added Female/Male avatar selection.
-- Added XS, S, M, L, XL and 2XL size controls with body/height metadata and visual scaling.
-- Added company fit-system selection and carried the selected model gender, size and fit system into the existing pattern-generation request.
-- Added Front, 3/4, Side and Back camera presets plus 15-degree rotation controls and direct drag rotation through model-viewer.
-- Added local studio lighting/floor treatment and a compact production-oriented model label.
-- Added Google model-viewer runtime to index.html.
+- Replaced the female Pattern Studio fitting avatar source with the user's uploaded `Untitled.fbx`.
+- Stored it as `public/models/fabricnow-genesis9-female.fbx`.
+- Added `public/fbx-viewer.html`, a browser-side Three.js + FBXLoader viewer so FabricNow can render FBX without requiring the Vite bundle to contain an FBX parser.
+- Kept male avatar on the existing GLB path.
+- Female avatar supports the existing Front / 3/4 / Side / Back controls and size scaling through the viewer URL.
+- Existing backend metadata remains: model gender, size, and fit system.
+- The uploaded FBX is used as provided; its embedded/referenced materials are preserved where the browser can resolve them.
+- True cloth-to-avatar physical simulation is still a separate simulation/backend layer; this change integrates the actual avatar model into the 3D Fit stage rather than faking garment drape.
 
-## Important
-The avatar is an original FabricNow neutral clay-style fitting mesh built for this workspace. It is designed to match the visual *category* of professional fashion-CAD avatars, not to copy LA VIPÈRE's proprietary model or interface.
-
-The current backend pattern endpoint still receives the avatar selection metadata. Full cloth-to-avatar physical drape simulation requires a 3D garment simulation service/engine and a backend output that returns a garment GLB/USDZ or equivalent; the viewer is prepared for that next integration.
-
-## Build verification
-A fresh Vite production build was not available in this environment because the uploaded workspace does not contain an installed Vite binary and npm registry access is unavailable. Source and asset integrity were checked locally.
+Build note: a fresh Vite production build was not verified in this environment because the workspace does not contain an installed Vite binary and package registry access is unavailable. The source files and public assets were updated directly.

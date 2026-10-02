@@ -5,7 +5,7 @@ const MODELS = {
   female: {
     label: 'Female',
     descriptor: 'Studio fit · neutral',
-    src: '/models/fabricnow-female-fashion-avatar.glb',
+    src: '/models/fabricnow-genesis9-female.fbx',
     measurements: { XS: { chest: 82, waist: 64, hip: 90, height: 164 }, S: { chest: 86, waist: 68, hip: 94, height: 168 }, M: { chest: 92, waist: 74, hip: 100, height: 172 }, L: { chest: 98, waist: 80, hip: 106, height: 176 }, XL: { chest: 104, waist: 86, hip: 112, height: 180 }, '2XL': { chest: 112, waist: 94, hip: 120, height: 184 } },
   },
   male: {
@@ -73,21 +73,31 @@ export default function FitModelPanel({ gender, setGender, size, setSize, fitSys
           <button type="button" onClick={() => setAngle(0)}><Rotate3D size={14}/> Reset view</button>
         </div>
         <div className="fit-model-viewer-shell">
-          <model-viewer
-            key={`${gender}-${size}`}
-            src={model.src}
-            alt={`${model.label} ${size} fashion fitting avatar`}
-            camera-controls
-            touch-action="pan-y"
-            shadow-intensity="0.12"
-            exposure="1.08"
-            environment-image="neutral"
-            camera-orbit={`${angle}deg 82deg 2.35m`}
-            camera-target="0m 0.92m 0m"
-            interaction-prompt="none"
-            disable-pan
-            style={{ '--model-scale': modelScale }}
-          />
+          {gender === 'female' ? (
+            <iframe
+              key={`${gender}-${size}-${angle}`}
+              className="fit-fbx-frame"
+              title={`${model.label} ${size} Genesis fitting avatar`}
+              src={`/fbx-viewer.html?src=${encodeURIComponent(model.src)}&angle=${angle}&scale=${encodeURIComponent(scale[0])}`}
+              loading="eager"
+            />
+          ) : (
+            <model-viewer
+              key={`${gender}-${size}`}
+              src={model.src}
+              alt={`${model.label} ${size} fashion fitting avatar`}
+              camera-controls
+              touch-action="pan-y"
+              shadow-intensity="0.12"
+              exposure="1.08"
+              environment-image="neutral"
+              camera-orbit={`${angle}deg 82deg 2.35m`}
+              camera-target="0m 0.92m 0m"
+              interaction-prompt="none"
+              disable-pan
+              style={{ '--model-scale': modelScale }}
+            />
+          )}
           <div className="fit-model-floor" aria-hidden="true" />
           <div className="fit-model-corner"><span>{model.label} · {size}</span><small>{data.height} cm · {fitSystem}</small></div>
           <div className="fit-model-rotate-hint"><Rotate3D size={14}/> Drag to rotate</div>
