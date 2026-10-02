@@ -57,7 +57,8 @@ export default function JobView({ jobId, initial, onJob, onDeleted }) {
     try { await downloadFile(`${base(job.id)}/export.zip`, zipName); } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
   const remove = async () => {
-    if (!window.confirm('Delete this project and its files? This cannot be undone.')) return;
+    const confirmed = await toast.confirm({ title: 'Delete this project?', message: 'This will permanently remove the project and its generated files. This action cannot be undone.', kind: 'error', confirmLabel: 'Delete project', cancelLabel: 'Keep project' });
+    if (!confirmed) return;
     try { await api(base(job.id), { method: 'DELETE' }); onDeleted?.(job.id); toast.success('Project deleted.'); } catch (e) { toast.error(e.message); }
   };
 
