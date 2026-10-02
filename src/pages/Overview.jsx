@@ -4,6 +4,7 @@ import { PLAN, money } from '../api.js';
 import { getUsage, isDone, fmtDate, dailySeries, tally, cap, jobTitle } from '../usage.js';
 import { StatusPill, Empty, Meter, Segmented } from '../components/ui.jsx';
 import { LineChart, BarChart, CountUp } from '../components/Charts.jsx';
+import Onboarding from '../components/Onboarding.jsx';
 
 const RANGES = [{ value: 7, label: '7D' }, { value: 30, label: '30D' }, { value: 90, label: '90D' }];
 
@@ -22,6 +23,8 @@ export default function Overview({ user, apiStatus, jobs, setPage }) {
         <h2>{first ? `Good to see you, ${first}.` : 'Good to see you.'}</h2>
         <p>Generate garment pattern assets and keep an eye on your API allowance.</p>
       </div>
+
+      <Onboarding jobs={jobs} setPage={setPage} />
 
       <div className="stat-strip">
         <div><span>Pattern jobs</span><strong><CountUp value={jobs.length} /></strong><small>Run in this workspace</small></div>

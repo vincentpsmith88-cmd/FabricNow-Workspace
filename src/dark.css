@@ -1,0 +1,88 @@
+/* =====================================================================
+   Dark theme — same orange/navy identity on deep navy surfaces.
+   Applied with <html data-theme="dark"> (see theme.js).
+   ===================================================================== */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12111D; --surface:#1B1A2D; --line:#2D2B45; --line-soft:#252340;
+  --text:#EDEFF7; --muted:#A4ABC2; --slate:#8E9BB0; --slate-light:#6F7C92;
+  --navy:#DCDFF3;            /* used as a text colour in most places */
+  --orange-wash:#3A2420; --orange-ink:#F08A63; --orange-ink-hover:#F5A080;
+  --ok:#5FD39A; --ok-bg:rgba(95,211,154,.14); --bad:#FF8F85; --bad-bg:rgba(255,143,133,.14); --wait:#F2C35C; --wait-bg:rgba(242,195,92,.14);
+  --shadow-xs:0 1px 2px rgba(0,0,0,.3);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3),0 8px 22px rgba(0,0,0,.28);
+  --shadow-md:0 2px 4px rgba(0,0,0,.3),0 16px 38px rgba(0,0,0,.4);
+  --shadow-lg:0 4px 8px rgba(0,0,0,.35),0 30px 80px rgba(0,0,0,.55);
+  --glass:rgba(27,26,45,.72);
+}
+[data-theme="dark"] body{
+  background:
+    radial-gradient(1100px 520px at 88% -8%, rgba(230,98,57,.13), transparent 60%),
+    radial-gradient(900px 520px at -6% 4%, rgba(91,75,138,.22), transparent 58%),
+    var(--bg);
+}
+/* surfaces */
+[data-theme="dark"] .panel,[data-theme="dark"] .os-card,[data-theme="dark"] .stat-strip,[data-theme="dark"] .os-metric,
+[data-theme="dark"] .assistant-shell,[data-theme="dark"] .dialog,[data-theme="dark"] .piece,[data-theme="dark"] .shot,
+[data-theme="dark"] .asset-card,[data-theme="dark"] .cmdk,[data-theme="dark"] .menu-pop,[data-theme="dark"] .toast{
+  background:rgba(27,26,45,.94);border-color:var(--line);
+}
+[data-theme="dark"] .stat-strip{background:linear-gradient(180deg,rgba(32,30,52,.96),rgba(27,26,45,.9))}
+[data-theme="dark"] .panel:hover,[data-theme="dark"] .os-card:hover{border-color:#3C3A5C}
+[data-theme="dark"] .plan-card{background:linear-gradient(#1B1A2D,#1B1A2D) padding-box,linear-gradient(135deg,#E66239,#5B4B8A) border-box}
+/* top + controls */
+[data-theme="dark"] .topbar{background:rgba(18,17,29,.72);border-bottom-color:rgba(45,43,69,.8)}
+[data-theme="dark"] .user-btn,[data-theme="dark"] .top-icon,[data-theme="dark"] .search-pill,[data-theme="dark"] .btn-ghost,
+[data-theme="dark"] .chip,[data-theme="dark"] .icon-action,[data-theme="dark"] .marketing-actions button,[data-theme="dark"] .integration-card,
+[data-theme="dark"] .onboard-steps button{background:rgba(32,30,52,.85);border-color:var(--line);color:var(--text)}
+[data-theme="dark"] .btn-ghost:hover:not(:disabled),[data-theme="dark"] .search-pill:hover{background:#26243F;border-color:#44425F}
+[data-theme="dark"] .field input,[data-theme="dark"] .field select,[data-theme="dark"] .field textarea,[data-theme="dark"] .select,
+[data-theme="dark"] .notes,[data-theme="dark"] .factory-input,[data-theme="dark"] .search-box,[data-theme="dark"] .assistant-compose input{
+  background:#15142A;color:var(--text);box-shadow:inset 0 0 0 1px var(--line);border-color:transparent;
+}
+[data-theme="dark"] .field input:focus,[data-theme="dark"] .field select:focus,[data-theme="dark"] .field textarea:focus,
+[data-theme="dark"] .select:focus,[data-theme="dark"] .notes:focus{background:#1A1933;border-color:var(--orange)}
+[data-theme="dark"] input::placeholder,[data-theme="dark"] textarea::placeholder{color:#6F7794}
+[data-theme="dark"] .seg{background:#15142A}
+[data-theme="dark"] .seg-thumb,[data-theme="dark"] .os-tabs button.active{background:#2B2947;color:#fff}
+[data-theme="dark"] .os-tabs{background:rgba(21,20,42,.8)}
+[data-theme="dark"] .os-tabs button:hover{background:rgba(255,255,255,.06)}
+[data-theme="dark"] .chip.on,[data-theme="dark"] .cmdk-item.on{background:linear-gradient(135deg,#3A2420,#2E1F2A);border-color:var(--orange)}
+[data-theme="dark"] .cmdk-item.on .cmdk-ico{background:#1B1A2D}
+/* tables, rows */
+[data-theme="dark"] th,[data-theme="dark"] .os-th{background:transparent;color:var(--slate)}
+[data-theme="dark"] tbody tr:hover,[data-theme="dark"] .os-tr:not(.os-th):hover{background:rgba(255,255,255,.035)}
+[data-theme="dark"] table.clickable tbody tr:hover,[data-theme="dark"] table.clickable tbody tr.sel,[data-theme="dark"] .os-tr.picked{background:rgba(230,98,57,.1)}
+[data-theme="dark"] .row-icon,[data-theme="dark"] .cmdk-ico,[data-theme="dark"] .os-empty-icon{background:linear-gradient(145deg,#26243F,#201E37);color:var(--text)}
+[data-theme="dark"] .empty-icon,[data-theme="dark"] .mini-thumb,[data-theme="dark"] .collection-cover{background:linear-gradient(145deg,#3A2420,#2E1F2A);color:var(--orange-ink)}
+[data-theme="dark"] .pipeline>div,[data-theme="dark"] .stage-cards>div,[data-theme="dark"] .package-grid>div{background:linear-gradient(180deg,#201E37,#1B1A2D)}
+[data-theme="dark"] .progress,[data-theme="dark"] .bar-track,[data-theme="dark"] .meter-lg{background:#2A2845}
+[data-theme="dark"] .integration-logo{background:#F4F5FA;border-color:transparent}
+/* drop zones, code, misc */
+[data-theme="dark"] .dz,[data-theme="dark"] .capture-drop,[data-theme="dark"] .drop{background:linear-gradient(180deg,#1C1B31,#17162B);border-color:#3A3858}
+[data-theme="dark"] .dz:hover,[data-theme="dark"] .dz.drag,[data-theme="dark"] .capture-drop:hover,[data-theme="dark"] .drop:hover{background:#2A2030}
+[data-theme="dark"] .dz-ico{background:#26243F;color:var(--orange-ink)}
+[data-theme="dark"] code,[data-theme="dark"] .api-endpoints code,[data-theme="dark"] .secret-row code{background:#15142A;color:#F3C9B8;border-color:var(--line)}
+[data-theme="dark"] .secret{background:linear-gradient(135deg,#3A2420,#2A1F2C);border-color:#5A3A33}
+[data-theme="dark"] .notice{background:rgba(32,30,52,.7);border-color:var(--line)}
+[data-theme="dark"] .composer-bar{background:rgba(27,26,45,.85)}
+[data-theme="dark"] .warn-box{background:#2E2616;border-color:#5C4A1E;color:#F2D58F}
+[data-theme="dark"] .assistant-bubble{background:#26243F}
+[data-theme="dark"] .assistant-msg.user .assistant-bubble{background:#3A2420}
+[data-theme="dark"] .assistant-avatar,[data-theme="dark"] .avatar,[data-theme="dark"] .tip{background:linear-gradient(145deg,#4A4578,#302C4D);color:#fff}
+[data-theme="dark"] .bar-track i{background:linear-gradient(90deg,#5B4B8A,#8A7BC4)}
+[data-theme="dark"] .greeting h2{background:linear-gradient(120deg,#EDEFF7 5%,#B9A9F0 55%,#F08A63 100%);-webkit-background-clip:text;background-clip:text}
+[data-theme="dark"] .btn-primary{color:#fff}
+[data-theme="dark"] .menu-pop button:hover{background:rgba(255,255,255,.06)}
+[data-theme="dark"] .auth-panel{background:radial-gradient(520px 320px at 100% 0%, rgba(230,98,57,.1), transparent 60%),#15142A}
+[data-theme="dark"] .splash{background:var(--bg)}
+[data-theme="dark"] .usage-alert{background:linear-gradient(135deg,#2E2616,#292212);border-color:#5C4A1E;color:#F2D58F}
+[data-theme="dark"] .usage-alert.over{background:linear-gradient(135deg,#3A1F1E,#2F1A1A);border-color:rgba(255,143,133,.3);color:#FFB2AA}
+[data-theme="dark"] .usage-alert-ico{background:rgba(255,255,255,.08)}
+[data-theme="dark"] .onboard{background:linear-gradient(135deg,rgba(32,30,52,.96),rgba(58,36,32,.55));border-color:rgba(240,138,99,.25)}
+[data-theme="dark"] .onboard-bar{background:rgba(255,255,255,.1)}
+[data-theme="dark"] .cmdk-backdrop,[data-theme="dark"] .dialog-backdrop{background:rgba(5,5,12,.62)}
+[data-theme="dark"] .skip-link{background:#EDEFF7;color:#12111D}
+[data-theme="dark"] kbd{background:#26243F;border-color:var(--line);color:var(--muted)}
+[data-theme="dark"] .dialog-close{background:#26243F}
+[data-theme="dark"] .health.ok{color:var(--ok)}

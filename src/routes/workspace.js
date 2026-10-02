@@ -71,6 +71,19 @@ async function requireApiAccess(req, res) {
 
 function addFile(form, f) { form.append(f.fieldname, new Blob([f.buffer], { type: f.mimetype }), f.originalname); }
 
+// Public liveness check used by the workspace topbar: is the pattern engine (Python worker) reachable?
+router.get("/health", async (_req, res) => {
+  const started = Date.now();
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 3000);
+  try {
+    const r = await fetch(`${WORKER_URL}/api/health`, { signal: ctl.signal });
+    res.json({ api: true, engine: r.ok, latencyMs: Date.now() - started });
+  } catch {
+    res.json({ api: true, engine: false });
+  } finally { clearTimeout(timer); }
+});
+
 router.get("/config", (_req, res) => {
   res.json({
     googleClientId: process.env.GOOGLE_CLIENT_ID || "",
