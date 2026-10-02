@@ -6,12 +6,13 @@ import GoogleButton from '../components/GoogleButton.jsx';
 
 // Sign-in only. Accounts are created outside this workspace.
 export default function Login({ onAuth }) {
+  const inviteToken = window.location.pathname.startsWith('/company-invitations/') ? window.location.pathname.split('/').filter(Boolean).pop() : ''; 
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
-  const finish = (d) => { localStorage.setItem(TOKEN_KEY, d.token); onAuth(d.user); };
+  const finish = async (d) => { localStorage.setItem(TOKEN_KEY, d.token); if (inviteToken) { try { await api('/api/companies/invitations/accept', { method:'POST', body: JSON.stringify({ token: inviteToken }) }); window.history.replaceState({}, '', '/'); } catch (err) { setError(err.message); } } onAuth(d.user); };
 
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setError('');
@@ -45,8 +46,8 @@ export default function Login({ onAuth }) {
       <section className="auth-panel">
         <div className="auth-card">
           <div className="auth-mobile-brand"><Brand size={30} /></div>
-          <h1>Sign in to your workspace</h1>
-          <p className="muted">Use the account your company was set up with.</p>
+          <h1>{inviteToken ? 'Accept company invitation' : 'Sign in to your workspace'}</h1>
+          <p className="muted">{inviteToken ? 'Sign in with the email address that received the invitation to join the company.' : 'Use the account your company was set up with.'}</p>
 
           <GoogleButton onCredential={google} onError={setError} text="signin_with" />
           {import.meta.env.DEV && (

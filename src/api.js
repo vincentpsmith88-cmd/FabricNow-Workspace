@@ -3,6 +3,7 @@ export const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').tr
 export const GOOGLE_AUTH_PATH = import.meta.env.VITE_GOOGLE_AUTH_PATH || '/api/auth/google';
 
 export const TOKEN_KEY = 'fabricnow_token';
+export const COMPANY_KEY = 'fabricnow_company_id';
 
 export async function api(path, opts = {}) {
   const token = localStorage.getItem(TOKEN_KEY);
@@ -11,6 +12,8 @@ export async function api(path, opts = {}) {
     ...(opts.headers || {}),
   };
   if (token) headers.Authorization = `Bearer ${token}`;
+  const companyId = localStorage.getItem(COMPANY_KEY);
+  if (companyId) headers['X-Company-ID'] = companyId;
 
   let res;
   try {
