@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Scissors, ArrowRight, FolderKanban, BarChart3 } from 'lucide-react';
 import { PLAN, money } from '../api.js';
-import { getUsage, isDone, fmtDate, dailySeries, tally, cap } from '../usage.js';
+import { getUsage, isDone, fmtDate, dailySeries, tally, cap, jobTitle } from '../usage.js';
 import { StatusPill, Empty, Meter, Segmented } from '../components/ui.jsx';
 import { LineChart, BarChart, CountUp } from '../components/Charts.jsx';
 
@@ -14,7 +14,7 @@ export default function Overview({ user, apiStatus, jobs, setPage }) {
   const done = jobs.filter(isDone).length;
   const series = useMemo(() => dailySeries(jobs, days), [jobs, days]);
   const total = series.reduce((a, b) => a + b.value, 0);
-  const byGarment = useMemo(() => tally(jobs, (j) => cap(j.garment || 'Other')), [jobs]);
+  const byGarment = useMemo(() => tally(jobs, (j) => cap(String(j.garment || 'Other').replace(/-/g, ' '))), [jobs]);
 
   return (
     <>
@@ -61,7 +61,7 @@ export default function Overview({ user, apiStatus, jobs, setPage }) {
               {jobs.slice(0, 5).map((j, i) => (
                 <li key={j.id || j.job_id || i}>
                   <span className="row-icon"><Scissors size={16} /></span>
-                  <div><strong>{j.garment || 'Pattern job'}</strong><small>{fmtDate(j.createdAt) || 'Just now'}</small></div>
+                  <div><strong>{jobTitle(j)}</strong><small>{fmtDate(j.createdAt) || 'Just now'}</small></div>
                   <StatusPill status={j.status} />
                 </li>
               ))}

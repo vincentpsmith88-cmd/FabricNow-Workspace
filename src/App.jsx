@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { api, TOKEN_KEY } from './api.js';
-import { getUsage } from './usage.js';
+import { getUsage, isRunning } from './usage.js';
 import { Sidebar, Topbar } from './components/Shell.jsx';
 import { LogoMark } from './components/Logo.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Login from './pages/Login.jsx';
 import Overview from './pages/Overview.jsx';
 import Studio from './pages/Studio.jsx';
+import Lab from './pages/Lab.jsx';
 import Projects from './pages/Projects.jsx';
 import Analytics from './pages/Analytics.jsx';
 import ApiKeys from './pages/ApiKeys.jsx';
@@ -31,31 +32,39 @@ export default function App() {
     if (!user) return;
     Promise.allSettled([api('/api/billing/api-status'), api('/api/workspace/jobs')]).then(([a, j]) => {
       if (a.status === 'fulfilled') setApiStatus(a.value);
-      if (j.status === 'fulfilled') setJobs(Array.isArray(j.value) ? j.value : (j.value.jobs || []));
+      if (j.status === 'fulfilled') setJobs(j.value.jobs || []);
     });
   }, [user]);
 
-  useEffect(() => { window.scrollTo(0, 0); }, [page]);
-
+  // keep the project list fresh while anything is still running (also picks up jobs started in another tab)
+  const anyRunning = jobs.some(isRunning);
   useEffect(() => {
-    if (!user || !jobs.some(j => ['queued','processing'].includes(j.status))) return undefined;
+    if (!user || !anyRunning) return undefined;
     const id = setInterval(() => {
-      api('/api/workspace/jobs').then(d => setJobs(Array.isArray(d) ? d : (d.jobs || []))).catch(() => {});
-    }, 5000);
+      api('/api/workspace/jobs').then((d) => setJobs((cur) => {
+        const fresh = new Map((d.jobs || []).map((j) => [j.id, j]));
+        return [...(d.jobs || []), ...cur.filter((j) => !fresh.has(j.id))].sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0));
+      })).catch(() => {});
+    }, 8000);
     return () => clearInterval(id);
-  }, [user, jobs]);
+  }, [user, anyRunning]);
+
+  useEffect(() => { window.scrollTo(0, 0); }, [page]);
 
   if (checking) return <div className="splash"><LogoMark size={44} /></div>;
   if (!user) return <Login onAuth={setUser} />;
 
   const logout = () => { localStorage.removeItem(TOKEN_KEY); setUser(null); setJobs([]); setApiStatus(null); setPage('overview'); };
   const usage = getUsage(apiStatus);
-  const addJob = (job) => setJobs((js) => [job, ...js]);
+  const addJob = (job) => setJobs((js) => [job, ...js.filter((j) => j.id !== job.id)]);
+  const updateJob = (job) => setJobs((js) => (js.some((j) => j.id === job.id) ? js.map((j) => (j.id === job.id ? { ...j, ...job } : j)) : [job, ...js]));
+  const removeJob = (id) => setJobs((js) => js.filter((j) => j.id !== id));
 
   const view = {
     overview: <Overview user={user} apiStatus={apiStatus} jobs={jobs} setPage={setPage} />,
-    studio: <Studio onDone={addJob} setPage={setPage} />,
-    projects: <Projects jobs={jobs} setPage={setPage} />,
+    studio: <Studio onDone={addJob} onJob={updateJob} onDeleted={removeJob} setPage={setPage} />,
+    lab: <Lab onDone={addJob} onJob={updateJob} onDeleted={removeJob} setPage={setPage} />,
+    projects: <Projects jobs={jobs} setPage={setPage} onJob={updateJob} onDeleted={removeJob} />,
     analytics: <Analytics jobs={jobs} />,
     keys: <ApiKeys />,
     usage: <Usage apiStatus={apiStatus} setPage={setPage} />,

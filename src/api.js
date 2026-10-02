@@ -37,3 +37,29 @@ export const PLAN = {
 
 export const money = (n) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+/** Fetch a protected file (image, zip) with the sign-in token and return it as a Blob. */
+export async function fetchBlob(path) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  let res;
+  try {
+    res = await fetch(`${API}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new Error('Could not reach the FabricNow API. Check your connection and try again.');
+  }
+  if (!res.ok) {
+    let msg = 'Download failed';
+    try { msg = (await res.json()).error || msg; } catch { /* not JSON */ }
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
+export async function downloadFile(path, filename) {
+  const blob = await fetchBlob(path);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}

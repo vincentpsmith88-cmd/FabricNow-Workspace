@@ -9,7 +9,7 @@ const RANGES = [{ value: 30, label: '30D' }, { value: 90, label: '90D' }];
 export default function Analytics({ jobs }) {
   const [days, setDays] = useState(90);
   const series = useMemo(() => dailySeries(jobs, days), [jobs, days]);
-  const byGarment = useMemo(() => tally(jobs, (j) => cap(j.garment || 'Other')), [jobs]);
+  const byGarment = useMemo(() => tally(jobs, (j) => cap(String(j.garment || 'Other').replace(/-/g, ' '))), [jobs]);
   const byStatus = useMemo(() => tally(jobs, (j) => cap(j.status || 'processing')), [jobs]);
 
   if (!jobs.length) {

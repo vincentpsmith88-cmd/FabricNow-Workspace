@@ -52,3 +52,17 @@ export function companyName(user) {
   if (n.toLowerCase() === String(user?.name || '').trim().toLowerCase()) return '';
   return n;
 }
+
+export const KIND_LABEL = {
+  pattern: 'Pattern', print: 'Print generator', colorways: 'Colourways', fabric: 'Fabric extraction',
+  flats: 'Sketch to flats', mockup: 'Mockup', asoebi: 'Aso-ebi styles',
+};
+
+/** A readable name for any job, pattern or tool. */
+export function jobTitle(j) {
+  const kind = j.kind || 'pattern';
+  if (kind === 'pattern') return (j.garment && j.garment !== 'Auto-detect') ? cap(String(j.garment).replace(/-/g, ' ')) : 'Pattern job';
+  return `${KIND_LABEL[kind] || cap(kind)}${j.garment ? ` · ${cap(String(j.garment).replace(/-/g, ' '))}` : ''}`;
+}
+
+export const isRunning = (j) => !isDone(j) && !isFailed(j);
