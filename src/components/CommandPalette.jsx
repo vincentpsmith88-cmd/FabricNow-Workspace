@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, CornerDownLeft, Moon, Sun, LogOut, Plus, Package, BookOpen, FolderKanban } from 'lucide-react';
+import { Search, CornerDownLeft, LogOut, Plus, Package, BookOpen, FolderKanban } from 'lucide-react';
 import { api } from '../api.js';
 import { NAV } from '../nav.js';
 import { jobTitle } from '../usage.js';
 
 /** Cmd/Ctrl+K palette: jump to any page, run quick actions, and search products, collections and pattern jobs. */
-export default function CommandPalette({ open, onClose, setPage, jobs, theme, toggleTheme, onLogout }) {
+export default function CommandPalette({ open, onClose, setPage, jobs, onLogout }) {
   const [q, setQ] = useState('');
   const [cursor, setCursor] = useState(0);
   const [remote, setRemote] = useState({ products: [], collections: [] });
@@ -31,7 +31,6 @@ export default function CommandPalette({ open, onClose, setPage, jobs, theme, to
     const go = (id) => () => { setPage(id); onClose(); };
     const list = [
       { group: 'Quick actions', label: 'New product', hint: 'Capture a garment', icon: Plus, run: go('fashion-capture'), kw: 'create capture add' },
-      { group: 'Quick actions', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', hint: 'Appearance', icon: theme === 'dark' ? Sun : Moon, run: () => { toggleTheme(); onClose(); }, kw: 'theme appearance dark light' },
       { group: 'Quick actions', label: 'Sign out', hint: '', icon: LogOut, run: () => { onClose(); onLogout(); }, kw: 'logout' },
       ...NAV.map((n) => ({ group: 'Go to', label: n.label, hint: n.sub, icon: n.icon, run: go(n.id), kw: n.id })),
       ...remote.products.map((p) => ({ group: 'Products', label: p.name, hint: [p.sku, p.category, p.status].filter(Boolean).join(' · '), icon: Package, run: go('fashion-production'), kw: `${p.sku || ''} ${p.category || ''}` })),
@@ -41,7 +40,7 @@ export default function CommandPalette({ open, onClose, setPage, jobs, theme, to
     const needle = q.trim().toLowerCase();
     if (!needle) return list.filter((i) => i.group === 'Quick actions' || i.group === 'Go to').slice(0, 14);
     return list.filter((i) => `${i.label} ${i.hint} ${i.kw}`.toLowerCase().includes(needle)).slice(0, 30);
-  }, [q, remote, jobs, theme, setPage, onClose, toggleTheme, onLogout]);
+  }, [q, remote, jobs, setPage, onClose, onLogout]);
 
   useEffect(() => { setCursor(0); }, [q]);
   useEffect(() => { listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' }); }, [cursor]);

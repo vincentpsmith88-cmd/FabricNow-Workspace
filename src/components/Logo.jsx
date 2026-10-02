@@ -1,7 +1,7 @@
 import React from 'react';
 
 export function LogoMark({ size = 28 }) {
-  return <img src="/logo-icon.svg" alt="" width={size} height={Math.round(size * 1.08)} className="logo-mark" />;
+  return <img src="/logo-icon.svg" alt="" width={size} height={Math.round(size * 1.08)} className="logo-mark" style={{ background: 'transparent', objectFit: 'contain' }} />;
 }
 
 export function Brand({ light = false, size = 28 }) {

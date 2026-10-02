@@ -103,10 +103,12 @@ button.is-pending:not(.btn)>*{opacity:.2}
     var(--grad-navy);
   border:1px solid rgba(255,255,255,.07);
   box-shadow:var(--shadow-lg),inset 0 1px 0 rgba(255,255,255,.08);
+  overflow:hidden;
 }
 .sidebar.collapsed{width:68px;padding-inline:8px}
-.side-top{position:sticky;top:0;z-index:5;padding:2px 8px 20px;background:var(--surface, #fff)}
-.brand{letter-spacing:.18em;font-size:.95rem}
+.side-top{padding:2px 8px 20px;background:transparent!important;flex:none}.side-top .brand,.side-top .logo-mark{background:transparent!important}
+.side-nav{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}.side-nav::-webkit-scrollbar{width:5px}.side-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:99px}
+.brand{letter-spacing:.18em;font-size:.95rem;background:transparent!important}
 .nav-group{margin-bottom:14px}
 .nav-label{padding:0 14px 7px;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(163,178,190,.8)}
 .nav-item{
