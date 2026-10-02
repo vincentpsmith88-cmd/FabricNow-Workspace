@@ -1,45 +1,71 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Info, TriangleAlert, X } from 'lucide-react';
 
-const ToastCtx = createContext({ push: () => {} });
+const ToastCtx = createContext({ push: () => {}, success: () => {}, error: () => {}, info: () => {}, confirm: async () => false });
 export const useToast = () => useContext(ToastCtx);
 
-const ICONS = { success: CheckCircle2, error: AlertCircle, info: Info };
+const ICONS = { success: CheckCircle2, error: AlertCircle, info: Info, warning: TriangleAlert };
 
 export function ToastProvider({ children }) {
-  const [items, setItems] = useState([]);
+  const [dialog, setDialog] = useState(null);
   const nextId = useRef(1);
+  const resolver = useRef(null);
 
-  const dismiss = useCallback((id) => setItems((xs) => xs.filter((x) => x.id !== id)), []);
+  const close = useCallback((result = true) => {
+    const resolve = resolver.current;
+    resolver.current = null;
+    setDialog(null);
+    resolve?.(result);
+  }, []);
 
-  const push = useCallback((message, kind = 'info', ms = 5000) => {
-    const id = nextId.current++;
-    setItems((xs) => [...xs, { id, message, kind }]);
-    if (ms) setTimeout(() => dismiss(id), ms);
-  }, [dismiss]);
+  const show = useCallback((message, kind = 'info', options = {}) => {
+    setDialog({ id: nextId.current++, mode: 'message', message: String(message || ''), kind, ...options });
+  }, []);
+
+  const confirm = useCallback((options = {}) => new Promise(resolve => {
+    resolver.current = resolve;
+    setDialog({
+      id: nextId.current++, mode: 'confirm', kind: options.kind || 'warning',
+      title: options.title || 'Are you sure?',
+      message: options.message || 'This action cannot be undone.',
+      confirmLabel: options.confirmLabel || 'Continue',
+      cancelLabel: options.cancelLabel || 'Cancel',
+      busy: false,
+      ...options,
+    });
+  }), []);
 
   const api = {
-    push,
-    success: (m) => push(m, 'success'),
-    error: (m) => push(m, 'error', 7000),
-    info: (m) => push(m, 'info'),
+    push: show,
+    success: (m, options) => show(m, 'success', options),
+    error: (m, options) => show(m, 'error', options),
+    info: (m, options) => show(m, 'info', options),
+    warning: (m, options) => show(m, 'warning', options),
+    confirm,
   };
+
+  const Icon = dialog ? (ICONS[dialog.kind] || Info) : Info;
+  const isConfirm = dialog?.mode === 'confirm';
 
   return (
     <ToastCtx.Provider value={api}>
       {children}
-      <div className="toasts" role="region" aria-label="Notifications" aria-live="polite">
-        {items.map((t) => {
-          const Icon = ICONS[t.kind] || Info;
-          return (
-            <div key={t.id} className={`toast toast-${t.kind}`} role={t.kind === 'error' ? 'alert' : 'status'}>
-              <Icon size={18} />
-              <span>{t.message}</span>
-              <button className="icon-btn" onClick={() => dismiss(t.id)} aria-label="Dismiss"><X size={16} /></button>
+      {dialog && (
+        <div className="dialog-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !isConfirm) close(true); }}>
+          <section className={`dialog dialog-${dialog.kind}`} role={isConfirm ? 'alertdialog' : 'dialog'} aria-modal="true" aria-labelledby="workspace-dialog-title" onMouseDown={e => e.stopPropagation()}>
+            <button className="dialog-close" onClick={() => close(isConfirm ? false : true)} aria-label="Close"><X size={18}/></button>
+            <div className="dialog-icon"><Icon size={25}/></div>
+            <h2 id="workspace-dialog-title">{dialog.title || (dialog.kind === 'success' ? 'Completed' : dialog.kind === 'error' ? 'Something went wrong' : 'Please review')}</h2>
+            <p>{dialog.message}</p>
+            <div className="dialog-actions">
+              {isConfirm && <button className="btn btn-ghost" onClick={() => close(false)}>{dialog.cancelLabel}</button>}
+              <button autoFocus className={`btn ${dialog.kind === 'error' || dialog.kind === 'warning' ? 'btn-danger' : 'btn-primary'}`} onClick={() => close(true)}>
+                {isConfirm ? dialog.confirmLabel : 'Continue'}
+              </button>
             </div>
-          );
-        })}
-      </div>
+          </section>
+        </div>
+      )}
     </ToastCtx.Provider>
   );
 }
