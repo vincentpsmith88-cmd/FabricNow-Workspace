@@ -1,4 +1,4 @@
-import { LayoutDashboard, Box, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Users, Bot, Shirt, Ruler, FileText, Kanban, ShieldCheck, Database, Search, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Box, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Users, Bot, Shirt, Ruler, FileText, Kanban, ShieldCheck, Database, Search, Image as ImageIcon, LayoutGrid } from 'lucide-react';
 
 const fashionItems = [
   { id:'fashion-command', label:'Command Center', icon:LayoutDashboard, sub:'Fashion production at a glance.' },
@@ -6,7 +6,7 @@ const fashionItems = [
   { id:'garment-library', label:'Garment Library', icon:Shirt, sub:'Search and manage every garment record.' },
   { id:'fabric-library', label:'Fabric Library', icon:Palette, sub:'African fabrics, prints and material intelligence.' },
   { id:'pinterest-research', label:'Pinterest Research', icon:Search, sub:'Search visual inspiration and send references to Pattern Studio.' },
-  { id:'inspiration-library', label:'Inspiration Library', icon:ImageIcon, sub:'Keep approved visual references for this company.' },
+  { id:'inspiration-library', label:'Inspiration Library', icon:ImageIcon, sub:'Browse the shared African fashion library and keep approved references.' },
   { id:'fashion-factory', label:'Bulk Product Factory', icon:Factory, sub:'Process product batches at scale.' },
   { id:'measurement-studio', label:'Measurements & Size Profiles', icon:Ruler, sub:'Size profiles and garment fit systems.' },
   { id:'tech-packs', label:'Tech Pack Builder', icon:FileText, sub:'Create production-ready technical packages.' },
@@ -27,6 +27,7 @@ export const NAV_GROUPS = [
     {id:'fit-models',label:'3D Fit Models',icon:Box,sub:'Rotate, light and size every fitting body.'},
     {id:'lab',label:'Design Lab',icon:Palette,sub:'Prints, colourways, flats, mockups, aso-ebi styles and listings.'},
     {id:'projects',label:'Projects',icon:FolderKanban,sub:'Every pattern job your team has run.'},
+    {id:'gallery',label:'Gallery',icon:LayoutGrid,sub:'A visual wall of African fashion photography to save and send to Pattern Studio.'},
   ]},
   { label:'Fashion OS', items:fashionItems },
   { label:'Developers', items:[
