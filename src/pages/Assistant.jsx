@@ -82,7 +82,7 @@ export default function Assistant() {
         </div>
         <form className="assistant-compose" onSubmit={send}>
           <textarea ref={field} rows={1} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKey} placeholder="Ask about products, production or marketing…" title="Enter to send, Shift+Enter for a new line" disabled={busy} />
-          <button className="btn btn-primary" disabled={busy || !input.trim()}>{busy ? <Spinner size={18} /> : <><Send size={16} /> Send</>}</button>
+          <button className="btn btn-primary" data-no-spin disabled={busy || !input.trim()}>{busy ? <Spinner size={18} /> : <><Send size={16} /> Send</>}</button>
         </form>
       </section>
     </div>
