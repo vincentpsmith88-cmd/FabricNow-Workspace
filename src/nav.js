@@ -6,7 +6,7 @@ const fashionItems = [
   { id:'garment-library', label:'Garment Library', icon:Shirt, sub:'Search and manage every garment record.' },
   { id:'fabric-library', label:'Fabric Library', icon:Palette, sub:'African fabrics, prints and material intelligence.' },
   { id:'pinterest-research', label:'Pinterest Research', icon:Search, sub:'Search visual inspiration and send references to Pattern Studio.' },
-  { id:'inspiration-library', label:'Inspiration Library', icon:ImageIcon, sub:'Keep approved visual references for this company.' },
+  { id:'inspiration-library', label:'Inspiration Library', icon:ImageIcon, sub:'Browse the shared African fashion library and keep approved references.' },
   { id:'fashion-factory', label:'Bulk Product Factory', icon:Factory, sub:'Process product batches at scale.' },
   { id:'measurement-studio', label:'Measurements & Size Profiles', icon:Ruler, sub:'Size profiles and garment fit systems.' },
   { id:'tech-packs', label:'Tech Pack Builder', icon:FileText, sub:'Create production-ready technical packages.' },
