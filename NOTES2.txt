@@ -1,0 +1,10 @@
+FabricNow redesign, round 2 - apply notes
+Unzip over your project (paths preserved), then:  npm run build   (no new packages needed)
+
+Files: src/styles.css, src/main.jsx, src/workspace-pro.css (new), src/components/kit.jsx (new),
+       src/pages/Overview.jsx, src/pages/ModulePages.jsx (new), src/pages/ProfessionalModules.jsx
+
+If you have local edits in src/styles.css and prefer not to overwrite it, make this ONE change instead
+(this is the root cause of the clipped popups). Find:
+  .page>*:not(.cols),.page>.cols>*{animation:rise .55s cubic-bezier(.2,.7,.2,1) both}
+and change the word  both  to  backwards
