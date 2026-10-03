@@ -6,6 +6,7 @@ import './styles.css';
 import './modern.css';
 import './dark.css';
 import './login.css';
+import './redesign.css';
 import { installPendingButtons } from './pendingButtons.js';
 import { applyTheme, getTheme } from './theme.js';
 

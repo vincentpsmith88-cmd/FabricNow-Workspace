@@ -1,16 +1,45 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, RotateCcw, Sparkles, ImagePlus, Ruler, Layers3, ShieldCheck, Box, CheckCircle2, ExternalLink, Link2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Check, ExternalLink, FileOutput, ImagePlus, Layers3, Link2, Plus, RotateCcw, Ruler, Scissors, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { api } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { Segmented, Spinner } from '../components/ui.jsx';
 import { Dropzone, usePreview } from '../components/Dropzone.jsx';
 import GarmentSelect, { garmentLabel, useCatalog } from '../components/GarmentSelect.jsx';
 import JobView from '../components/JobView.jsx';
-import FitModelPanel from '../components/FitModelPanel.jsx';
 
 const LININGS = [{ value: 'none', label: 'None' }, { value: 'partial', label: 'Partial' }, { value: 'full', label: 'Full' }];
+const NOTE_IDEAS = ['Side zip', 'Puff sleeves', 'Gathered waist', 'Fully lined bodice', 'Slit hem', 'Wide neckline'];
+const STEPS = [
+  ['01', 'Reference', 'Garment + fabric photo'],
+  ['02', 'Construction', 'Type, lining, notes'],
+  ['03', 'Generate', 'Pieces + grading'],
+  ['04', 'Review', 'Production files'],
+];
 const MAX_NOTES = 500;
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
+
+function Hero({ eyebrow, title, body, stage, actions }) {
+  return (
+    <header className="ps-hero">
+      <div className="ps-hero-top">
+        <div className="ps-hero-copy">
+          <span className="ps-eyebrow"><Scissors size={13} /> {eyebrow}</span>
+          <h2>{title}</h2>
+          <p>{body}</p>
+        </div>
+        <div className="ps-hero-actions">{actions}</div>
+      </div>
+      <ol className="ps-steps" aria-label="Progress">
+        {STEPS.map(([n, t, d], i) => (
+          <li key={n} className={i < stage ? 'is-done' : i === stage ? 'is-now' : ''} aria-current={i === stage ? 'step' : undefined}>
+            <span className="ps-step-n">{i < stage ? <Check size={13} /> : n}</span>
+            <span><strong>{t}</strong><small>{d}</small></span>
+          </li>
+        ))}
+      </ol>
+    </header>
+  );
+}
 
 export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   const toast = useToast();
@@ -20,10 +49,6 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   const [garment, setGarment] = useState('Auto-detect');
   const [lining, setLining] = useState('none');
   const [notes, setNotes] = useState('');
-  const [gender, setGender] = useState('female');
-  const [size, setSize] = useState('M');
-  const [fitSystem, setFitSystem] = useState('Standard');
-  const [modelId, setModelId] = useState('african-female-fat-short');
   const [busy, setBusy] = useState(false);
   const [secs, setSecs] = useState(0);
   const [error, setError] = useState('');
@@ -63,8 +88,13 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
 
   const reset = () => {
     setFile(null); setSwatch(null); setNotes(''); setGarment('Auto-detect'); setLining('none');
-    setGender('female'); setSize('M'); setFitSystem('Standard'); setResult(null); setError('');
+    setResult(null); setError('');
   };
+
+  const addIdea = (t) => setNotes((n) => {
+    if (n.toLowerCase().includes(t.toLowerCase())) return n;
+    return `${n.trim() ? `${n.trim().replace(/[,.]$/, '')}, ` : ''}${t.toLowerCase()}`.slice(0, MAX_NOTES);
+  });
 
   const submit = async (e) => {
     e.preventDefault();
@@ -76,77 +106,130 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
       fd.append('file', file);
       if (swatch) fd.append('swatch', swatch);
       fd.append('garment', garment); fd.append('notes', notes); fd.append('lining', lining);
-      fd.append('model_gender', gender); fd.append('model_size', size); fd.append('fit_system', fitSystem); fd.append('model_id', modelId);
       const d = await api('/api/workspace/patterns', { method: 'POST', body: fd });
-      setResult(d); onDone(d); toast.success('Pattern job started with your fit model.');
+      setResult(d); onDone(d); toast.success('Pattern job started.');
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
 
   const ready = Boolean(file);
   const gLabel = garmentLabel(catalog, garment);
+  const stage = result ? 3 : busy ? 2 : ready ? 1 : 0;
 
   if (result) {
-    return <div className="pattern-studio-page">
-      <header className="studio-head">
-        <div><div className="studio-eyebrow">PATTERN STUDIO · PRODUCTION WORKSPACE</div><h2>Review the generated pattern, then grade and prepare production files.</h2><p>Your selected {gender} {size} fit model and fit system were included with the generation request.</p></div>
-        <button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15}/> Start another</button>
-      </header>
-      <div className="studio-result-strip"><span><CheckCircle2 size={15}/> Pattern generated</span><b>{gLabel}</b><span>{gender === 'female' ? 'Female' : 'Male'} · {size}</span><span>{fitSystem}</span><button className="btn btn-ghost" onClick={() => setPage('projects')}>All projects <ArrowRight size={15}/></button></div>
-      <JobView jobId={result.id} initial={result} onJob={onJob} onDeleted={(id) => { onDeleted(id); reset(); }} />
-    </div>;
+    return (
+      <div className="ps">
+        <Hero
+          eyebrow="PATTERN STUDIO" stage={3}
+          title="Review the pattern, then grade and export."
+          body="Check the generated pieces, adjust if needed, and prepare production-ready files."
+          actions={<button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15} /> Start another</button>}
+        />
+        <div className="ps-result-strip">
+          <span className="ok"><CheckCircle2 size={15} /> Pattern generated</span>
+          <b>{gLabel}</b>
+          <span>{cap(lining)} lining</span>
+          {swatch && <span>Fabric reference added</span>}
+          <button className="btn btn-ghost" type="button" onClick={() => setPage('projects')}>All projects <ArrowRight size={15} /></button>
+        </div>
+        <JobView jobId={result.id} initial={result} onJob={onJob} onDeleted={(id) => { onDeleted(id); reset(); }} />
+      </div>
+    );
   }
 
   return (
-    <div className="pattern-studio-page">
-      <header className="studio-head">
-        <div>
-          <div className="studio-eyebrow">PATTERN STUDIO · 2D → 3D → PRODUCTION</div>
-          <h2>Build, fit and prepare a garment from one working flow.</h2>
-          <p>Bring in the garment reference, define construction, fit it on a selectable 3D body, then generate the pattern and production package.</p>
-        </div>
-        <div className="studio-head-actions"><span className="studio-status"><i/> Pattern engine connected</span><button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15}/> Reset</button></div>
-      </header>
+    <div className="ps">
+      <Hero
+        eyebrow="PATTERN STUDIO" stage={stage}
+        title="From garment photo to production pattern."
+        body="Upload a reference, describe how it’s constructed, and get cut-ready pattern pieces with grading and DXF / SVG exports."
+        actions={<><button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15} /> Reset</button></>}
+      />
 
-      <div className="studio-steps">
-        {[['01','Reference','Garment imagery',ImagePlus],['02','Configure','Construction intent',Ruler],['03','3D Fit','Model + size',Box],['04','Generate','Pattern + grading',Layers3],['05','Review','Production output',ShieldCheck]].map(([n,t,d,I],i)=><div className={ready && i < 3 ? 'active' : ''} key={n}><b>{n}</b><span><strong>{t}</strong><small>{d}</small></span>{i<4&&<ArrowRight size={14}/>}</div>)}
-      </div>
+      <form className="ps-grid" onSubmit={submit}>
+        <div className="ps-main">
+          <section className="ps-card">
+            <div className="ps-card-head">
+              <span className="ps-badge"><ImagePlus size={17} /></span>
+              <div><h3>Garment &amp; fabric</h3><p>A clear front or ¾ photo gives the most accurate pieces.</p></div>
+            </div>
 
-      <form className="studio-workspace" onSubmit={submit}>
-        <div className="studio-form-column">
-          <section className="studio-card">
-            <div className="studio-card-head"><div><span className="studio-section-kicker">01 · REFERENCE</span><h3>Garment and fabric</h3></div><span>Clear front or 3/4 garment photo · max 10 MB</span></div>
-            {reference && <div className="studio-reference-callout"><div className="studio-reference-thumb"><img src={reference.imageUrl} alt={reference.title || 'Pinterest reference'} /></div><div><span className="studio-section-kicker">PINTEREST REFERENCE</span><strong>{reference.title || 'Visual inspiration'}</strong><p>{referenceLoading ? <span className="inline-loading"><Spinner size={13}/> Preparing reference</span> : referenceError || 'The source link is preserved with this working reference.'}</p><div className="studio-reference-actions">{reference.sourceUrl&&<a href={reference.sourceUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm"><ExternalLink size={13}/> Open source</a>}<button type="button" className="btn btn-ghost btn-sm" onClick={()=>navigator.clipboard?.writeText(reference.sourceUrl||'')}><Link2 size={13}/> Copy source</button></div></div></div>}
-            <div className="studio-upload-grid">
+            {reference && (
+              <div className="ps-reference">
+                <div className="ps-reference-thumb"><img src={reference.imageUrl} alt={reference.title || 'Pinterest reference'} /></div>
+                <div>
+                  <span className="ps-mini-label">PINTEREST REFERENCE</span>
+                  <strong>{reference.title || 'Visual inspiration'}</strong>
+                  <p>{referenceLoading ? <span className="inline-loading"><Spinner size={13} /> Preparing reference</span> : referenceError || 'The source link is preserved with this working reference.'}</p>
+                  <div className="ps-reference-actions">
+                    {reference.sourceUrl && <a href={reference.sourceUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm"><ExternalLink size={13} /> Open source</a>}
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard?.writeText(reference.sourceUrl || '')}><Link2 size={13} /> Copy source</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="ps-upload">
               <Dropzone big file={file} preview={photo} onFile={(f) => { setFile(f); setError(''); }} title="Drop a garment photo here" hint="or click to browse" scanning={busy} />
-              <Dropzone file={swatch} preview={fabric} onFile={setSwatch} title="Add fabric reference" hint="Optional · close-up of weave or print" />
+              <div className="ps-upload-side">
+                <Dropzone file={swatch} preview={fabric} onFile={setSwatch} title="Fabric reference" hint="Optional close-up of weave or print" />
+                <ul className="ps-tips">
+                  <li><Check size={14} /> Front or ¾ view works best</li>
+                  <li><Check size={14} /> Plain, evenly lit background</li>
+                  <li><Check size={14} /> JPG, PNG or WebP · up to 10 MB</li>
+                </ul>
+              </div>
             </div>
           </section>
 
-          <section className="studio-card">
-            <div className="studio-card-head"><div><span className="studio-section-kicker">02 · CONSTRUCTION</span><h3>Garment intent</h3></div><span>Give the engine enough context to plan the pieces correctly</span></div>
-            <div className="studio-config-grid">
-              <div><label className="fit-control-label">Garment type</label><GarmentSelect value={garment} onChange={setGarment} /></div>
-              <div><label className="fit-control-label">Lining</label><Segmented label="Lining" options={LININGS} value={lining} onChange={setLining} /></div>
+          <section className="ps-card">
+            <div className="ps-card-head">
+              <span className="ps-badge"><SlidersHorizontal size={17} /></span>
+              <div><h3>Construction</h3><p>Give the engine enough context to plan the pieces correctly.</p></div>
             </div>
-            <label className="field studio-notes-field"><span>Designer notes <em>{notes.length}/{MAX_NOTES}</em></span><textarea rows={3} maxLength={MAX_NOTES} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Construction details, fit notes, special panels, closures, neckline or sleeve changes" /></label>
+            <div className="ps-config">
+              <div><label className="ps-label" htmlFor="garment">Garment type</label><GarmentSelect value={garment} onChange={setGarment} /></div>
+              <div><span className="ps-label">Lining</span><Segmented label="Lining" options={LININGS} value={lining} onChange={setLining} /></div>
+            </div>
+            <div className="ps-notes">
+              <div className="ps-label-row"><label className="ps-label" htmlFor="notes">Designer notes <em>optional</em></label><span className={notes.length > MAX_NOTES - 40 ? 'warn' : ''}>{notes.length}/{MAX_NOTES}</span></div>
+              <textarea id="notes" rows={4} maxLength={MAX_NOTES} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Closures, neckline or sleeve changes, special panels, seam details…" />
+              <div className="ps-ideas" aria-label="Quick additions">
+                {NOTE_IDEAS.map((t) => <button type="button" key={t} onClick={() => addIdea(t)}><Plus size={12} />{t}</button>)}
+              </div>
+            </div>
           </section>
-
-          <FitModelPanel gender={gender} setGender={setGender} size={size} setSize={setSize} fitSystem={fitSystem} setFitSystem={setFitSystem} modelId={modelId} setModelId={setModelId} onOpenLibrary={() => setPage('fit-models')} />
-
-          {error && <div className="error" role="alert">{error}</div>}
-          <div className="studio-submit-bar">
-            <div><span className="studio-submit-label">READY TO GENERATE</span><strong>{ready ? `${gLabel} · ${gender === 'female' ? 'Female' : 'Male'} ${size}` : 'Add a garment reference first'}</strong><small>{ready ? `${cap(lining)} lining · ${fitSystem} fit system` : 'The 3D model will be included in the pattern request.'}</small></div>
-            <button className="btn btn-primary btn-lg" disabled={busy || !ready}><Sparkles size={16}/> {busy ? `Generating · ${secs}s` : 'Generate pattern + fit package'}</button>
-          </div>
         </div>
 
-        <aside className={`brief ${busy ? 'busy' : ''}`} aria-label="Pattern production brief">
-          <div className="brief-head"><span>Production brief</span><span className={`ready ${ready ? 'on' : ''}`}>{busy ? 'Generating' : ready ? 'Ready' : 'Waiting'}</span></div>
-          <div className="brief-photo">{photo ? <img src={photo} alt="Garment preview" /> : <img src="/logo-icon.svg" alt="" className="float" />}{busy && <span className="scan" />}</div>
-          <div className="brief-model-summary"><div><Box size={15}/><span><strong>3D fit model</strong><small>{gender === 'female' ? 'Female' : 'Male'} · {size} · {fitSystem}</small></span></div><div><Ruler size={15}/><span><strong>Production route</strong><small>2D pattern → grading → DXF / SVG</small></span></div></div>
-          <dl className="brief-list"><div><dt>Garment</dt><dd>{gLabel}</dd></div><div><dt>Lining</dt><dd>{cap(lining)}</dd></div><div><dt>Fabric</dt><dd>{swatch ? 'Added' : 'None'}</dd></div><div><dt>Designer notes</dt><dd>{notes.trim() ? `${notes.trim().length} chars` : 'None'}</dd></div></dl>
-          {busy ? <div className="brief-foot"><div className="progress"><i /></div><span>Generating · {secs}s</span></div> : <p className="brief-foot-text">The generation request carries your reference, construction intent, fit model, size and fit system. Finished pattern jobs can then be graded and exported from the result view.</p>}
+        <aside className={`ps-brief ${busy ? 'busy' : ''}`} aria-label="Production brief">
+          <div className="ps-brief-head"><span>Production brief</span><span className={`ps-pill ${busy ? 'busy' : ready ? 'on' : ''}`}>{busy ? 'Generating' : ready ? 'Ready' : 'Waiting'}</span></div>
+
+          <div className="ps-brief-photo">
+            {photo ? <img src={photo} alt="Garment preview" /> : <div className="ps-brief-empty"><img src="/logo-icon.svg" alt="" className="float" /><small>Your garment preview appears here</small></div>}
+            {busy && <span className="scan" />}
+          </div>
+
+          <dl className="ps-brief-list">
+            <div><dt>Garment</dt><dd>{gLabel}</dd></div>
+            <div><dt>Lining</dt><dd>{cap(lining)}</dd></div>
+            <div><dt>Fabric</dt><dd>{swatch ? 'Added' : 'None'}</dd></div>
+            <div><dt>Notes</dt><dd>{notes.trim() ? `${notes.trim().length} characters` : 'None'}</dd></div>
+          </dl>
+
+          <div className="ps-route" aria-label="What you will get">
+            <span><Layers3 size={14} /> Pattern pieces</span>
+            <span><Ruler size={14} /> Grading</span>
+            <span><FileOutput size={14} /> DXF / SVG</span>
+          </div>
+
+          {error && <div className="ps-error" role="alert">{error}</div>}
+
+          <button className="ps-cta" disabled={busy || !ready} data-no-spin aria-busy={busy}>
+            {busy ? <><Spinner size={16} /> Generating · {secs}s</> : <><Sparkles size={16} /> Generate pattern</>}
+          </button>
+          {busy
+            ? <div className="ps-progress" aria-hidden="true"><i /></div>
+            : <p className="ps-brief-foot">{ready ? 'When it finishes you can review, grade and export from the result.' : 'Add a garment photo to enable generation.'}</p>}
         </aside>
       </form>
     </div>

@@ -24,7 +24,7 @@ export const NAV_GROUPS = [
   { label:'Workspace', items:[
     {id:'overview',label:'Overview',icon:LayoutDashboard,sub:'Your garment automation at a glance.'},
     {id:'studio',label:'Pattern Studio',icon:Scissors,sub:'Turn a garment photo into pattern assets.'},
-    {id:'fit-models',label:'3D Fit Models',icon:Box,sub:'Inspect every fitting avatar in a dedicated viewer.'},
+    {id:'fit-models',label:'3D Fit Models',icon:Box,sub:'Rotate, light and size every fitting body.'},
     {id:'lab',label:'Design Lab',icon:Palette,sub:'Prints, colourways, flats, mockups, aso-ebi styles and listings.'},
     {id:'projects',label:'Projects',icon:FolderKanban,sub:'Every pattern job your team has run.'},
   ]},

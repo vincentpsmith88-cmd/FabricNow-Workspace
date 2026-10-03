@@ -1,0 +1,5 @@
+FabricNow redesign — apply notes
+1. Unzip over your project (paths preserved), then run:  npm install   (adds "three" for the in-page 3D viewer)
+2. DELETE these now-unused files:
+   src/components/FitModelPanel.jsx   (3D fit panel removed from Pattern Studio)
+   public/fbx-viewer.html             (old iframe viewer, replaced by src/components/FitModelViewer.jsx)
