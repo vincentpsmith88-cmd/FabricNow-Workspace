@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { Segmented, Spinner } from '../components/ui.jsx';
 import { Dropzone, usePreview } from '../components/Dropzone.jsx';
-import GarmentSelect, { garmentLabel, useCatalog } from '../components/GarmentSelect.jsx';
+import { useCatalog } from '../components/GarmentSelect.jsx';
 import JobView from '../components/JobView.jsx';
 
 const LININGS = [{ value: 'none', label: 'None' }, { value: 'partial', label: 'Partial' }, { value: 'full', label: 'Full' }];
@@ -46,7 +46,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   const catalog = useCatalog();
   const [file, setFile] = useState(null);
   const [swatch, setSwatch] = useState(null);
-  const [garment, setGarment] = useState('Auto-detect');
+  const [garment] = useState('Auto-detect');
   const [lining, setLining] = useState('none');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
@@ -87,7 +87,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   }, [busy]);
 
   const reset = () => {
-    setFile(null); setSwatch(null); setNotes(''); setGarment('Auto-detect'); setLining('none');
+    setFile(null); setSwatch(null); setNotes(''); setLining('none');
     setResult(null); setError('');
   };
 
@@ -113,7 +113,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   };
 
   const ready = Boolean(file);
-  const gLabel = garmentLabel(catalog, garment);
+  const gLabel = result?.garment || result?.plan?.garment || 'AI auto-detect';
   const stage = result ? 3 : busy ? 2 : ready ? 1 : 0;
 
   if (result) {
@@ -188,7 +188,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
               <div><h3>Construction</h3><p>Give the engine enough context to plan the pieces correctly.</p></div>
             </div>
             <div className="ps-config">
-              <div><label className="ps-label" htmlFor="garment">Garment type</label><GarmentSelect value={garment} onChange={setGarment} /></div>
+              <div><span className="ps-label">Garment type</span><div className="ps-auto-detect"><Sparkles size={14}/> AI will identify the garment from the reference</div></div>
               <div><span className="ps-label">Lining</span><Segmented label="Lining" options={LININGS} value={lining} onChange={setLining} /></div>
             </div>
             <div className="ps-notes">
@@ -225,7 +225,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
           {error && <div className="ps-error" role="alert">{error}</div>}
 
           <button className="ps-cta" disabled={busy || !ready} data-no-spin aria-busy={busy}>
-            {busy ? <><Spinner size={16} /> Generating · {secs}s</> : <><Sparkles size={16} /> Generate pattern</>}
+            {busy ? <><Spinner size={16} /> Generating · {secs}s</> : <><Sparkles size={16} /> Generate</>}
           </button>
           {busy
             ? <div className="ps-progress" aria-hidden="true"><i /></div>
