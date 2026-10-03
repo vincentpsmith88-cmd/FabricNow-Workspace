@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, Send, User, Sparkles, RefreshCw, Command, Layers3, Shirt, Factory, BookOpen, ArrowRight, Copy, Check, ArrowDown } from 'lucide-react';
 import { api } from '../api.js';
+import { Spinner } from '../components/ui.jsx';
 import './assistant.css';
 
 const WELCOME = 'Welcome to FabricNow AI. I can help you understand your live workspace, prepare product workflows and find what needs attention.';
@@ -75,13 +76,13 @@ export default function Assistant() {
                 <div className="assistant-meta"><small className="assistant-time">{m.role === 'assistant' ? 'FabricNow AI' : 'You'} · {time(m.ts)}</small>{m.role === 'assistant' && i > 0 && <button className="assistant-copy" onClick={() => copy(i, m.text)} aria-label="Copy reply">{copied === i ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}</button>}</div>
               </div>
             </div>)}
-            {busy && <div className="assistant-msg assistant"><div className="assistant-avatar"><Bot size={16} /></div><div className="assistant-body"><div className="assistant-bubble assistant-thinking"><span className="dots"><i /><i /><i /></span> Thinking from workspace context…</div></div></div>}
+            {busy && <div className="assistant-msg assistant"><div className="assistant-avatar"><Bot size={16} /></div><div className="assistant-body"><div className="assistant-bubble assistant-thinking" role="status" aria-label="Assistant is replying"><Spinner size={18} /></div></div></div>}
           </div>
           {showJump && <button className="assistant-jump" onClick={() => { stick.current = true; scrollDown(); }} aria-label="Jump to latest"><ArrowDown size={16} /></button>}
         </div>
         <form className="assistant-compose" onSubmit={send}>
-          <textarea ref={field} rows={1} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKey} placeholder="Ask about products, assets, production or marketing…  (Enter to send, Shift+Enter for a new line)" disabled={busy} />
-          <button className="btn btn-primary" disabled={busy || !input.trim()}>{busy ? 'Working…' : <><Send size={16} /> Send</>}</button>
+          <textarea ref={field} rows={1} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKey} placeholder="Ask about products, production or marketing…" title="Enter to send, Shift+Enter for a new line" disabled={busy} />
+          <button className="btn btn-primary" disabled={busy || !input.trim()}>{busy ? <Spinner size={18} /> : <><Send size={16} /> Send</>}</button>
         </form>
       </section>
     </div>
