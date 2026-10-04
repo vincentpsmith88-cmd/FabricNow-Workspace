@@ -1,11 +1,15 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {api,API,downloadFile} from '../api.js';
 import {useToast} from '../toast.jsx';
-import {Bot,Check,CheckCircle2,ChevronDown,Circle,Copy,Crosshair,Download,Eye,EyeOff,FlipHorizontal,Hand,Image as ImageIcon,Layers3,LayoutGrid,ListOrdered,Magnet,Minus,Move,PenTool,Plus,Redo2,Ruler,Save,Scissors,Shapes,SlidersHorizontal,Sparkles,Square,SquareDashed,Trash2,Undo2,Upload,Wand2,ZoomIn,ZoomOut} from 'lucide-react';
+import {Bot,Box,Check,CheckCircle2,ChevronDown,Circle,Copy,Crosshair,Divide,Download,Eye,EyeOff,FlipHorizontal,Hand,Image as ImageIcon,Layers3,LayoutGrid,ListOrdered,Magnet,Maximize2,Minus,Move,Palette,PenTool,Plus,Redo2,Ruler,Save,Scissors,Shapes,ShieldCheck,SlidersHorizontal,Sparkles,Square,SquareDashed,Trash2,Undo2,Upload,Wand2,ZoomIn,ZoomOut} from 'lucide-react';
 import Board from './tailor/Board.jsx';
-import {BOARD_W,BOARD_H,uid,clamp,toUnit,fromUnit,num,fmt,isLine,lineLen,bbox,shift,mirrorOp} from './tailor/geometry.js';
-import {BLOCKS,STARTERS,SIZES,DEFAULT_MEAS,MEAS_FIELDS,blockOps,starterOps,mapProjectMeasurements} from './tailor/blocks.js';
+import GarmentPreview3D from './tailor/GarmentPreview3D.jsx';
+import {BOARD_W,BOARD_H,uid,clamp,toUnit,fromUnit,num,fmt,isLine,lineLen,bbox,shift,mirrorOp,withPath,syncPiece,pieceEdges,mkPiece,lineHits,pointInPoly,fullOutline} from './tailor/geometry.js';
+import {BLOCKS,STARTERS,SIZES,DEFAULT_MEAS,DEFAULT_STYLE,STYLE_GROUPS,MEAS_FIELDS,blockOps,starterOps,restyleAll,mapProjectMeasurements} from './tailor/blocks.js';
 import {computeLayout,placedShape,layoutSvg} from './tailor/cutting.js';
+import {splitPiece,spreadPiece,presetLine} from './tailor/manipulate.js';
+import {allResults,edgeOptions} from './tailor/seams.js';
+import {PRINTS,printById,tileOf} from './tailor/fabrics.js';
 import './tailor-tools.css';
 
 const TOOLS=[
@@ -17,14 +21,17 @@ const TOOLS=[
  ['notch','Notch','N',Circle,'Click to place a notch'],
  ['grainline','Grainline','G',Move,'Drag to draw a grainline'],
  ['stitch','Stitch','T',Scissors,'Drag to draw a stitch line'],
+ ['split','Split piece','X',Divide,'Drag a line across a piece to split it (princess, panel or yoke seam)'],
+ ['spread','Slash & spread','W',Maximize2,'Drag a slash line edge to edge, then type how far to open it'],
  ['measure','Measure','M',Ruler,'Drag to measure a distance'],
  ['annotation','Note','A',Layers3,'Click to add a note'],
  ['photo','Move photo','',Hand,'Drag to move the photo underlay',true],
  ['calibrate','Set photo scale','',Crosshair,'Drag a line over something you know the real length of',true]
 ];
-const TABS=[['ai','AI Tailor',Bot],['inspect','Inspector',SlidersHorizontal],['blocks','Blocks',Shapes],['photo','Photo',ImageIcon],['cut','Cutting',LayoutGrid],['sew','Sewing',ListOrdered],['check','Checklist',CheckCircle2]];
+const TABS=[['ai','AI Tailor',Bot],['inspect','Inspector',SlidersHorizontal],['design','Design',Shapes],['fabric','Fabric',Palette],['photo','Photo',ImageIcon],['checks','Checks',ShieldCheck],['cut','Cutting',LayoutGrid],['sew','Sewing',ListOrdered]];
 const CHECKS=['Grainline is defined','Seam allowances are checked','Notches match joining pieces','Measurements are verified','Stitch order is documented'];
 const FABRIC_PRESETS=[90,112,140,150];
+const DEFAULT_FABRIC={id:'ankara',colors:printById('ankara').colors.slice(),scale:100,rot:0};
 const SCALE_NOTE='1 board unit = 1 cm; origin top-left; x right, y down; board is 140 x 180 cm.';
 
 const isGood=o=>{
@@ -38,7 +45,7 @@ const isGood=o=>{
 function cleanOps(list){
  return (list||[]).map(o=>({...o,type:o.type==='line'?'seam':o.type})).filter(isGood).map(o=>{
   const r={...o,id:uid()};
-  if(r.type==='piece'){r.points=r.points.map(p=>[clamp(+p[0],0,BOARD_W),clamp(+p[1],0,BOARD_H)]);Object.assign(r,bbox(r.points));r.name=r.name||'AI piece';r.cut=r.cut||1;r.allowance=r.allowance??1}
+  if(r.type==='piece'){return mkPiece({name:r.name||'AI piece',cut:r.cut||1,allowance:r.allowance??1},r.points.map(p=>[clamp(+p[0],0,BOARD_W),clamp(+p[1],0,BOARD_H)]))}
   else ['x','x1','x2'].forEach(k=>{if(r[k]!==undefined)r[k]=clamp(+r[k],0,BOARD_W)});
   ['y','y1','y2'].forEach(k=>{if(r[k]!==undefined)r[k]=clamp(+r[k],0,BOARD_H)});
   return r;
@@ -57,15 +64,17 @@ const stripGroup=(ops,id)=>ops.filter(o=>o.id!==id&&o.parent!==id);
 
 export default function TailorTools(){
  const toast=useToast();
- const [boards,setBoards]=useState([]),[board,setBoard]=useState(null),[ops,setOps]=useState([]),[tool,setTool]=useState('select'),[selected,setSelected]=useState(null),[projects,setProjects]=useState([]),[projectId,setProjectId]=useState(''),[ai,setAi]=useState(null),[request,setRequest]=useState('Check the construction, seam placement, allowances and stitch sequence for this pattern.'),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false),[unit,setUnit]=useState('cm'),[zoom,setZoom]=useState(100),[tab,setTab]=useState('blocks'),[checked,setChecked]=useState([]),[snap,setSnap]=useState(true),[showSA,setShowSA]=useState(true),[hist,setHist]=useState({past:[],future:[]});
- const [meas,setMeas]=useState(DEFAULT_MEAS),[photo,setPhoto]=useState(null),[fab,setFab]=useState({w:150,allow:true,rotate:false,extra:5}),[stitch,setStitch]=useState(null),[sewDone,setSewDone]=useState([]),[cutAi,setCutAi]=useState(null),[busyKind,setBusyKind]=useState('');
- const opsRef=useRef(ops),histRef=useRef(hist),cursorRef=useRef(null),areaRef=useRef(null),fileRef=useRef(null);
+ const [boards,setBoards]=useState([]),[board,setBoard]=useState(null),[ops,setOps]=useState([]),[tool,setTool]=useState('select'),[selected,setSelected]=useState(null),[projects,setProjects]=useState([]),[projectId,setProjectId]=useState(''),[ai,setAi]=useState(null),[request,setRequest]=useState('Check the construction, seam placement, allowances and stitch sequence for this pattern.'),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false),[unit,setUnit]=useState('cm'),[zoom,setZoom]=useState(100),[tab,setTab]=useState('design'),[checked,setChecked]=useState([]),[snap,setSnap]=useState(true),[showSA,setShowSA]=useState(true),[hist,setHist]=useState({past:[],future:[]});
+ const [style,setStyle]=useState(DEFAULT_STYLE),[garmentFabric,setGarmentFabric]=useState(DEFAULT_FABRIC),[fabricOn,setFabricOn]=useState(false),[fabTarget,setFabTarget]=useState('garment'),[customSeams,setCustomSeams]=useState([]),[highlight,setHighlight]=useState([]),[show3d,setShow3d]=useState(false),[pairDraft,setPairDraft]=useState({pa:'',ka:'',pb:'',kb:'',type:'seam'}),[meas,setMeas]=useState(DEFAULT_MEAS),[photo,setPhoto]=useState(null),[fab,setFab]=useState({w:150,allow:true,rotate:false,extra:5}),[stitch,setStitch]=useState(null),[sewDone,setSewDone]=useState([]),[cutAi,setCutAi]=useState(null),[busyKind,setBusyKind]=useState('');
+ const opsRef=useRef(ops),histRef=useRef(hist),cursorRef=useRef(null),areaRef=useRef(null),fileRef=useRef(null),swatchRef=useRef(null);
  opsRef.current=ops;histRef.current=hist;
 
  const applyBoard=b=>{
-  setBoard(b);setOps(Array.isArray(b?.operations)?b.operations:[]);setUnit(b?.unit||'cm');setProjectId(b?.projectId||'');
+  setBoard(b);setOps(Array.isArray(b?.operations)?b.operations.map(withPath):[]);setUnit(b?.unit||'cm');setProjectId(b?.projectId||'');
   const ph=b?.layers?.find(l=>l.type==='photo'),me=b?.layers?.find(l=>l.type==='measurements');
   setPhoto(ph&&ph.src?{...ph}:null);setMeas({...DEFAULT_MEAS,...(me?.values||{})});
+  const sty=b?.layers?.find(l=>l.type==='style'),fb=b?.layers?.find(l=>l.type==='fabric'),sm=b?.layers?.find(l=>l.type==='seams');
+  setStyle({...DEFAULT_STYLE,...(sty?.values||{})});setGarmentFabric(fb?.value?.id||fb?.value?.src?fb.value:DEFAULT_FABRIC);setFabricOn(!!fb?.on);setCustomSeams(Array.isArray(sm?.items)?sm.items:[]);setHighlight([]);
   setSelected(null);setAi(null);setStitch(null);setCutAi(null);setHist({past:[],future:[]});
  };
  useEffect(()=>{Promise.allSettled([api('/api/tailor-tools/boards'),api('/api/workspace-suite/projects?limit=50')]).then(([b,p])=>{if(b.status==='fulfilled'){setBoards(b.value.boards||[]);if(b.value.boards?.[0])applyBoard(b.value.boards[0])}if(p.status==='fulfilled')setProjects(p.value.projects||[])})},[]);
@@ -90,7 +99,6 @@ export default function TailorTools(){
   if(selectedOp.fold)return toast.info('This piece is cut on the fold, so it is already symmetrical. Use Mirror for left/right pairs.');
   const b=bbox(selectedOp.points),cx=b.x+b.w/2,sx=b.x+2*b.w+6<=BOARD_W?b.w+6:-(b.w+6),nid=uid();
   const copies=group(selected).map(o=>{const m=mirrorOp(o,cx,sx);return {...m,id:o.id===selected?nid:uid(),parent:o.parent?nid:undefined,...(o.id===selected?{name:`${o.name} (mirror)`}:{})}});
-  copies[0]=Object.assign(copies[0],bbox(copies[0].points));
   commit([...ops,...copies]);setSelected(nid);
  };
  const nudge=(dx,dy)=>commit(ops.map(o=>(o.id===selected||o.parent===selected)?shift(o,dx,dy):o));
@@ -111,7 +119,7 @@ export default function TailorTools(){
 
  /* boards */
  const create=async()=>{try{const d=await api('/api/tailor-tools/boards',{method:'POST',body:JSON.stringify({name:'Tailor Board',projectId:projectId||null,unit})});setBoards(b=>[d.board,...b]);applyBoard(d.board)}catch(e){toast.error(e.message)}};
- const layersPayload=()=>[...(photo?.src?[{type:'photo',...photo}]:[]),{type:'measurements',values:meas}];
+ const layersPayload=()=>[...(photo?.src?[{type:'photo',...photo}]:[]),{type:'measurements',values:meas},{type:'style',values:style},{type:'fabric',value:garmentFabric,on:fabricOn},{type:'seams',items:customSeams}];
  const save=async()=>{if(!board)return create();setSaving(true);try{const d=await api(`/api/tailor-tools/boards/${board.id}`,{method:'PUT',body:JSON.stringify({operations:ops,layers:layersPayload(),projectId:projectId||board.projectId||null,unit,aiContext:ai||{}})});setBoard(d.board);setBoards(bs=>bs.map(x=>x.id===d.board.id?d.board:x));toast.success('Tailor board saved.')}catch(e){toast.error(e.message)}finally{setSaving(false)}};
  const loadBoard=id=>{const b=boards.find(x=>x.id===id);if(b)applyBoard(b)};
 
@@ -122,10 +130,79 @@ export default function TailorTools(){
   const first=res.ops.find(o=>o.type==='piece');if(first)setSelected(first.id);setTool('select');
   if(res.overflow)toast.info('The board is nearly full, so some pieces were placed on top of others. Drag them apart or clear space.');
  };
- const addStarter=id=>addOps(starterOps(id,meas,opsRef.current));
- const addBlock=id=>addOps(blockOps(id,meas,opsRef.current));
+ const addStarter=id=>addOps(starterOps(id,meas,opsRef.current,style));
+ const addBlock=id=>addOps(blockOps(id,meas,opsRef.current,style));
  const setMeasure=(k,v)=>{const n=fromUnit(parseFloat(v),unit);if(Number.isFinite(n)&&n>0)setMeas(m=>({...m,[k]:+n.toFixed(2)}))};
  const useProjectMeas=()=>{const p=projects.find(x=>x.id===projectId);const mapped=mapProjectMeasurements(p?.measurements);const n=Object.keys(mapped).length;if(!n)return toast.info('No bust, waist or hip measurements were found on this project.');setMeas(m=>({...m,...mapped}));toast.info(`Applied ${n} measurement${n>1?'s':''} from the project (values read as cm).`)};
+
+
+ /* style variations: garment-level, restyles every block piece on the board */
+ const hasBlocks=ops.some(o=>o.type==='piece'&&o.block);
+ const changeStyle=(k,v)=>{
+  const next={...style,[k]:v};setStyle(next);
+  if(opsRef.current.some(o=>o.type==='piece'&&o.block)){
+   const before=opsRef.current.filter(o=>o.type==='piece'&&o.block).length,out=restyleAll(opsRef.current,meas,next),after=out.filter(o=>o.type==='piece'&&o.block).length;
+   commit(out);if(after<before)toast.info('This style has no back piece, so the extra piece was removed. Use the single-piece buttons to add it back.');
+  }
+ };
+ const rebuildBlocks=()=>{commit(restyleAll(opsRef.current,meas,style));toast.success('Block pieces rebuilt from the current measurements. Pieces you edited by hand were not touched.')};
+
+ /* pattern manipulation */
+ const pieceHit=(a,b)=>{
+  const ps=opsRef.current.filter(o=>o.type==='piece'),ok=ps.filter(p=>lineHits(p.points,a,b).length===2);
+  if(!ok.length)return null;
+  const sel=ok.find(p=>p.id===selected);if(sel)return sel;
+  const mid=[(a[0]+b[0])/2,(a[1]+b[1])/2];return ok.find(p=>pointInPoly(mid,p.points))||ok[0];
+ };
+ const onToolLine=(tl,a,b)=>{
+  const target=pieceHit(a,b);setTool('select');
+  if(!target)return toast.info('The line has to cross a pattern piece edge to edge. Try again across a piece.');
+  if(tl==='split'){
+   const r=splitPiece(opsRef.current,target.id,a,b);if(r.error)return toast.info(r.error);
+   commit(r.ops);setSelected(r.selectId);toast.success(`Split into ${r.names.join(' and ')}. Matching notches were added on the new seam.`);return;
+  }
+  const raw=window.prompt(`How far should the slash open? (${unit}) Use a negative number to close it.`,String(num(3,unit)));
+  const v=parseFloat(raw||'');if(!isFinite(v)||v===0)return;
+  const r=spreadPiece(opsRef.current,target.id,a,b,fromUnit(v,unit));
+  if(r.error)return toast.info(r.error);commit(r.ops);setSelected(target.id);
+  toast.success('Slash and spread applied. The piece is now a plain outline, so edit it with the corner handles.');
+ };
+ const applyPreset=kind=>{
+  const p=ops.find(o=>o.id===selected&&o.type==='piece');
+  if(!p)return toast.info('Click a pattern piece first, then choose a seam.');
+  if(p.fold&&kind!=='princess'&&kind!=='panel'&&kind!=='yoke'){return}
+  const info=pieceEdges(p),line=presetLine(p,kind,info);
+  if(!line)return toast.info(kind==='princess'?'Princess seams work on a bodice piece with a shoulder and a waist edge.':'Could not place that seam on this piece.');
+  const r=splitPiece(opsRef.current,p.id,line.a,line.b,{dropDarts:kind==='princess'});
+  if(r.error)return toast.info(r.error);commit(r.ops);setSelected(r.selectId);
+  toast.success(kind==='princess'?'Princess seam added. The dart was removed because the seam shapes the fit instead.':'Seam added. You can drag the new edge handles to adjust it.');
+ };
+
+ /* fabric */
+ const selPiece=ops.find(o=>o.id===selected&&o.type==='piece');
+ const activeFabric=fabTarget==='piece'&&selPiece?(selPiece.fabric||garmentFabric):garmentFabric;
+ const setFabric=patch=>{
+  const base=activeFabric;let next={...base,...patch};
+  if(patch.id){next={...next,src:undefined,tile:undefined,colors:patch.colors||printById(patch.id).colors.slice()}}
+  if(fabTarget==='piece'&&selPiece){commit(ops.map(o=>o.id===selPiece.id?{...o,fabric:next}:o))}else setGarmentFabric(next);
+  setFabricOn(true);
+ };
+ const setFabColor=(i,c)=>setFabric({colors:activeFabric.colors?.length?activeFabric.colors.map((x,j)=>j===i?c:x):printById(activeFabric.id).colors.map((x,j)=>j===i?c:x)});
+ const onSwatchFile=async e=>{
+  const f=e.target.files?.[0];e.target.value='';if(!f)return;
+  try{const {src}=await compressImage(f,420,.8);setFabric({id:undefined,src,tile:[20,20],colors:[]})}catch(err){toast.error(err.message)}
+ };
+ const clearPieceFabric=()=>{if(selPiece)commit(ops.map(o=>o.id===selPiece.id?{...o,fabric:undefined}:o))};
+
+ /* seam checks */
+ const seamResults=useMemo(()=>allResults(ops,customSeams,unit),[ops,customSeams,unit]);
+ const seamCounts=useMemo(()=>({ok:seamResults.filter(r=>r.status==='ok').length,ease:seamResults.filter(r=>r.status==='ease').length,bad:seamResults.filter(r=>r.status==='bad').length}),[seamResults]);
+ const piecesList=ops.filter(o=>o.type==='piece');
+ const addCustomPair=()=>{
+  const {pa,ka,pb,kb,type}=pairDraft;if(!pa||!pb||ka===''||kb==='')return toast.info('Choose a piece and an edge on both sides.');
+  const A=piecesList.find(p=>p.id===pa),B=piecesList.find(p=>p.id===pb);
+  setCustomSeams(c=>[...c,{id:uid(),title:`${A?.name||'Piece'} to ${B?.name||'piece'}`,a:[{pid:pa,k:+ka,mult:1}],b:[{pid:pb,k:+kb,mult:1}],type}]);setPairDraft({pa:'',ka:'',pb:'',kb:'',type:'seam'});
+ };
 
  /* photo */
  const onPhotoFile=async e=>{
@@ -191,7 +268,7 @@ export default function TailorTools(){
     </div>
 
     <div className="tt-canvas-area" ref={areaRef}>
-     <Board ops={ops} tool={tool} setTool={setTool} selected={selected} setSelected={setSelected} zoom={zoom} unit={unit} showSA={showSA} snap={snap} photo={photo} setPhoto={setPhoto} onCommit={commit} onLive={setOps} onBegin={push} onCalibrate={onCalibrate} cursorRef={cursorRef}/>
+     <Board ops={ops} tool={tool} setTool={setTool} selected={selected} setSelected={setSelected} zoom={zoom} unit={unit} showSA={showSA} snap={snap} photo={photo} setPhoto={setPhoto} fabricOn={fabricOn} garmentFabric={garmentFabric} highlight={highlight} onCommit={commit} onLive={setOps} onBegin={push} onCalibrate={onCalibrate} onToolLine={onToolLine} cursorRef={cursorRef}/>
      <nav className="tt-rail" aria-label="Drawing tools">
       {TOOLS.filter(t=>!t[5]).map(([id,label,key,Icon])=><button key={id} className={tool===id?'active':''} onClick={()=>setTool(id)} aria-label={label}><Icon size={18}/><span className="tt-tip">{label}{key&&<kbd>{key}</kbd>}</span></button>)}
      </nav>
@@ -205,6 +282,8 @@ export default function TailorTools(){
       <i/>
       <button className={snap?'on':''} onClick={()=>setSnap(s=>!s)} title="Snap to grid and points"><Magnet size={16}/></button>
       <button className={showSA?'on':''} onClick={()=>setShowSA(s=>!s)} title="Show seam allowance"><SquareDashed size={16}/></button>
+      <button className={fabricOn?'on':''} onClick={()=>setFabricOn(v=>!v)} title="Show fabric on pieces"><Palette size={16}/></button>
+      <button onClick={()=>setShow3d(true)} disabled={!piecesList.length} title="3D fabric preview"><Box size={16}/></button>
       <button className={photo?.visible===false?'':photo?'on':''} disabled={!photo} onClick={()=>setPhoto(p=>({...p,visible:p.visible===false}))} title="Show / hide photo">{photo?.visible===false?<EyeOff size={16}/>:<Eye size={16}/>}</button>
      </div>
      {empty&&<div className="tt-start">
@@ -252,6 +331,8 @@ export default function TailorTools(){
        <div className="tt-field"><label>Seam allowance ({unit})</label><input type="number" min="0" step={unit==='mm'?1:.1} value={Number(toUnit(selectedOp.allowance??1,unit).toFixed(2))} onFocus={push} onChange={e=>{const v=parseFloat(e.target.value);if(!isNaN(v))patch({allowance:Math.max(0,fromUnit(v,unit))})}}/></div>
        <div className="tt-field"><label>Cut on fold</label><button className={`tt-switch${selectedOp.fold?' on':''}`} onClick={()=>{push();patch({fold:!selectedOp.fold})}} aria-pressed={!!selectedOp.fold}><i/></button></div>
        <div className="tt-field"><label>Size</label><b>{num(sb.w,unit)} × {num(sb.h,unit)} {unit}</b></div>
+       <div className="tt-field"><label>Fabric</label><b>{selectedOp.fabric?'Custom print':'Garment fabric'}</b></div>
+       <p className="tt-note">Double-click an edge to curve it. Shift-click to add a point. Alt-click a point to remove it.</p>
       </>}
       {selectedOp.type==='dart'&&<>
        <div className="tt-field"><label>Width ({unit})</label><input type="number" min="0" step={unit==='mm'?1:.1} value={Number(toUnit(selectedOp.w||3,unit).toFixed(2))} onFocus={push} onChange={e=>{const v=parseFloat(e.target.value);if(!isNaN(v))patch({w:Math.max(0,fromUnit(v,unit))})}}/></div>
@@ -265,16 +346,47 @@ export default function TailorTools(){
      <div className="tt-objects">{ops.map(o=><button key={o.id} className={`${selected===o.id?'on':''}${o.parent?' child':''}`} onClick={()=>{setSelected(o.id);setTool('select')}}><span className="tt-chip">{o.type}</span>{o.name||o.text||(isLine(o)?fmt(lineLen(o),unit):'')}</button>)}</div>
     </div>}
 
-    {tab==='blocks'&&<div className="tt-panel">
-     <div className="tt-panel-head"><div><strong>Pattern blocks</strong><small>Basic blocks sized from the measurements below.</small></div></div>
+    {tab==='design'&&<div className="tt-panel">
+     <div className="tt-panel-head"><div><strong>Design</strong><small>Start a garment, change its style, then reshape the pattern.</small></div></div>
      <div className="tt-sub">Start a garment</div>
      <div className="tt-cards">{STARTERS.map(s=><button key={s.id} onClick={()=>addStarter(s.id)}><Shapes size={16}/><b>{s.label}</b><small>{s.blocks.length} pieces</small></button>)}</div>
      <div className="tt-sub">Single pieces</div>
      <div className="tt-chips">{BLOCKS.map(b=><button key={b.id} onClick={()=>addBlock(b.id)}><Plus size={12}/>{b.label}</button>)}</div>
+
+     <div className="tt-sub">Style {hasBlocks&&<em className="tt-live">changes apply to the board</em>}</div>
+     <div className="tt-styles">{STYLE_GROUPS.map(g=><div className="tt-style-group" key={g.family}><h4>{g.label}</h4>
+      {g.fields.map(f=>f.range
+       ?<div className="tt-style-row" key={f.k}><label>{f.label}</label><input type="range" min={f.range[0]} max={f.range[1]} value={style[f.k]} onChange={e=>setStyle(st=>({...st,[f.k]:+e.target.value}))} onPointerUp={e=>changeStyle(f.k,+e.target.value)} onKeyUp={e=>changeStyle(f.k,+e.target.value)}/><b>{style[f.k]}%</b></div>
+       :<div className="tt-style-row" key={f.k}><label>{f.label}</label><div className="tt-opts">{f.opts.map(([v,l])=><button key={v} className={style[f.k]===v?'on':''} onClick={()=>changeStyle(f.k,v)}>{l}</button>)}</div></div>)}
+     </div>)}</div>
+
+     <div className="tt-sub">Reshape the pattern</div>
+     <div className="tt-tools2">
+      <button className={tool==='split'?'on':''} onClick={()=>setTool('split')}><Divide size={16}/><span><b>Split piece</b><small>Drag a line across a piece</small></span></button>
+      <button className={tool==='spread'?'on':''} onClick={()=>setTool('spread')}><Maximize2 size={16}/><span><b>Slash &amp; spread</b><small>Add flare or fullness</small></span></button>
+     </div>
+     <div className="tt-chips"><button onClick={()=>applyPreset('princess')}>Princess seam</button><button onClick={()=>applyPreset('yoke')}>Yoke</button><button onClick={()=>applyPreset('panel')}>Panel seam</button></div>
+     <p className="tt-note">Select a piece first for the seam buttons. Double-click an edge of a selected piece to curve it. Shift-click an edge to add a point. Alt-click a point to remove it.</p>
+
      <div className="tt-sub">Measurements ({unit}) <span className="tt-sizes">{Object.keys(SIZES).map(s=><button key={s} onClick={()=>setMeas(m=>({...m,...SIZES[s]}))}>{s}</button>)}</span></div>
      <div className="tt-meas">{MEAS_FIELDS.map(([k,l])=><label key={k}><span>{l}</span><input type="number" step={unit==='mm'?1:.5} value={Number(toUnit(meas[k],unit).toFixed(1))} onChange={e=>setMeasure(k,e.target.value)}/></label>)}</div>
-     {projectId&&<button className="btn btn-ghost btn-sm" onClick={useProjectMeas}>Use measurements from linked project</button>}
-     <p className="tt-note">These are basic blocks, not a finished fit. Make a toile (test garment) and adjust before cutting good fabric.</p>
+     <div className="tt-row">{hasBlocks&&<button className="btn btn-ghost btn-sm" onClick={rebuildBlocks}>Rebuild pieces from measurements</button>}{projectId&&<button className="btn btn-ghost btn-sm" onClick={useProjectMeas}>Use project measurements</button>}</div>
+     <p className="tt-note">These are basic blocks, not a finished fit. Make a toile (test garment) and adjust before cutting good fabric. Once you edit a piece by hand it no longer changes with the style.</p>
+    </div>}
+
+    {tab==='fabric'&&<div className="tt-panel">
+     <div className="tt-panel-head"><div><strong>Fabric</strong><small>See a print on your pattern pieces, then on a 3D form.</small></div></div>
+     <input ref={swatchRef} type="file" accept="image/*" hidden onChange={onSwatchFile}/>
+     <div className="tt-seg tt-seg-wide"><button className={fabTarget==='garment'?'on':''} onClick={()=>setFabTarget('garment')}>Whole garment</button><button className={fabTarget==='piece'?'on':''} disabled={!selPiece} onClick={()=>setFabTarget('piece')}>{selPiece?`Only ${selPiece.name}`:'Selected piece'}</button></div>
+     <div className="tt-prints">{PRINTS.map(p=>{const t=tileOf({id:p.id});return <button key={p.id} className={activeFabric.id===p.id?'on':''} onClick={()=>setFabric({id:p.id})} title={p.name}><svg viewBox={`0 0 ${t.w*2} ${t.h*2}`} preserveAspectRatio="xMidYMid slice"><g dangerouslySetInnerHTML={{__html:t.markup+`<g transform="translate(${t.w} 0)">${t.markup}</g><g transform="translate(0 ${t.h})">${t.markup}</g><g transform="translate(${t.w} ${t.h})">${t.markup}</g>`}}/></svg><span>{p.name}</span></button>})}
+      <button className={activeFabric.src?'on':''} onClick={()=>swatchRef.current?.click()}><div className="tt-print-up"><Upload size={18}/></div><span>Your fabric photo</span></button></div>
+     {!activeFabric.src&&<div className="tt-colors">{(activeFabric.colors?.length?activeFabric.colors:printById(activeFabric.id).colors).map((c,i)=><label key={i}><input type="color" value={c} onChange={e=>setFabColor(i,e.target.value)}/><span>Colour {i+1}</span></label>)}</div>}
+     {activeFabric.src&&<div className="tt-field"><label>One repeat is ({unit})</label><input type="number" min="1" value={Number(toUnit(activeFabric.tile?.[0]||20,unit).toFixed(1))} onChange={e=>{const v=fromUnit(parseFloat(e.target.value),unit);if(v>0)setFabric({tile:[v,v]})}}/></div>}
+     <div className="tt-field"><label>Print size</label><input type="range" min="40" max="300" value={activeFabric.scale||100} onChange={e=>setFabric({scale:+e.target.value})}/></div>
+     <div className="tt-field"><label>Direction</label><div className="tt-opts">{[0,45,90,135].map(d=><button key={d} className={(activeFabric.rot||0)===d?'on':''} onClick={()=>setFabric({rot:d})}>{d}°</button>)}</div></div>
+     <label className="tt-check"><input type="checkbox" checked={fabricOn} onChange={e=>setFabricOn(e.target.checked)}/> Show fabric on the board</label>
+     <div className="tt-row"><button className="btn btn-primary btn-sm" onClick={()=>setShow3d(true)} disabled={!piecesList.length}><Box size={14}/> View in 3D</button>{selPiece?.fabric&&<button className="btn btn-ghost btn-sm" onClick={clearPieceFabric}>Use garment fabric on this piece</button>}</div>
+     <p className="tt-note">The print is drawn at real size, so a 16 cm circle really is 16 cm on the pattern. The 3D form shows bodice and skirt pieces only. Sleeves and trousers are not modelled yet.</p>
     </div>}
 
     {tab==='photo'&&<div className="tt-panel">
@@ -321,13 +433,29 @@ export default function TailorTools(){
       :stitch&&<p className="tt-note">The AI did not return a plan. Try again with more pieces on the board.</p>}
     </div>}
 
-    {tab==='check'&&<div className="tt-panel">
-     <div className="tt-panel-head"><div><strong>Before you cut</strong><small>{checked.length} of {CHECKS.length} complete</small></div><b className="tt-pct">{pct}%</b></div>
+    {tab==='checks'&&<div className="tt-panel">
+     <div className="tt-panel-head"><div><strong>Seam match check</strong><small>Compares the edges that sew together, including curves and darts.</small></div></div>
+     {seamResults.length>0&&<div className="tt-counts"><span className="ok">{seamCounts.ok} match</span><span className="ease">{seamCounts.ease} check</span><span className="bad">{seamCounts.bad} problem</span></div>}
+     {seamResults.length===0&&<div className="tt-empty"><ShieldCheck size={22}/><p>Add a bodice, sleeve or skirt from the Design tab and its seams are checked automatically. For your own pieces, pair edges below.</p></div>}
+     <div className="tt-seams">{seamResults.map(r=><div key={r.id} className={`tt-seam ${r.status}`} onMouseEnter={()=>setHighlight(r.hl)} onMouseLeave={()=>setHighlight([])}>
+      <div className="tt-seam-top"><i/><b>{r.title}</b>{r.custom&&<button className="tt-x" onClick={()=>setCustomSeams(c=>c.filter(x=>x.id!==r.id))} aria-label="Remove pair"><Trash2 size={12}/></button>}</div>
+      <div className="tt-seam-nums"><span>{fmt(r.a,unit)}</span><em>{r.diff>=0?'+':''}{num(r.diff,unit)} {unit}</em><span>{fmt(r.b,unit)}</span></div>
+      <p>{r.msg}{r.darts>0?` Darts take up ${fmt(r.darts,unit)}.`:''}</p></div>)}</div>
+     <details className="tt-pairs"><summary>Pair your own edges</summary>
+      {piecesList.length<2?<p className="tt-note">Add at least two pieces to pair their edges.</p>:<>
+       {[['a','A'],['b','B']].map(([s,l])=>{const pid=pairDraft['p'+s],pc=piecesList.find(p=>p.id===pid);return <div className="tt-pair-row" key={s}><b>{l}</b>
+        <select value={pid} onChange={e=>setPairDraft(d=>({...d,['p'+s]:e.target.value,['k'+s]:''}))}><option value="">Piece…</option>{piecesList.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+        <select value={pairDraft['k'+s]} disabled={!pc} onChange={e=>setPairDraft(d=>({...d,['k'+s]:e.target.value}))}><option value="">Edge…</option>{pc&&edgeOptions(pc).map(o=><option key={o.k} value={o.k}>{o.label}</option>)}</select></div>})}
+       <div className="tt-pair-row"><b>Type</b><select value={pairDraft.type} onChange={e=>setPairDraft(d=>({...d,type:e.target.value}))}><option value="seam">Plain seam (should match)</option><option value="sleeve">Sleeve cap into armhole</option><option value="waist">Waist join (gathers allowed)</option></select></div>
+       <button className="btn btn-ghost btn-sm" onClick={addCustomPair}><Plus size={13}/> Add pair</button></>}
+     </details>
+     <div className="tt-sub">Before you cut <b className="tt-pct sm">{pct}%</b></div>
      <div className="tt-progress"><i style={{width:`${pct}%`}}/></div>
      <ul className="tt-checks">{CHECKS.map((c,i)=><li key={c}><button className={checked.includes(i)?'on':''} onClick={()=>toggleCheck(i)}><span><Check size={12}/></span>{c}</button></li>)}</ul>
     </div>}
     </div>
    </aside>
   </div>
+  {show3d&&<GarmentPreview3D ops={ops} garmentFabric={garmentFabric} onClose={()=>setShow3d(false)}/>}
  </div>
 }
