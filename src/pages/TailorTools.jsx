@@ -1,9 +1,8 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {api,API,downloadFile} from '../api.js';
 import {useToast} from '../toast.jsx';
-import {Bot,Box,Check,CheckCircle2,ChevronDown,Circle,Copy,Crosshair,Divide,Download,Eye,EyeOff,FlipHorizontal,Hand,Image as ImageIcon,Layers3,LayoutGrid,ListOrdered,Magnet,Maximize2,Minus,Move,Palette,PenTool,Plus,Redo2,Ruler,Save,Scissors,Shapes,ShieldCheck,SlidersHorizontal,Sparkles,Square,SquareDashed,Trash2,Undo2,Upload,Wand2,ZoomIn,ZoomOut} from 'lucide-react';
+import {Bot,Check,CheckCircle2,ChevronDown,Circle,Copy,Crosshair,Divide,Download,Eye,EyeOff,FlipHorizontal,Hand,Image as ImageIcon,Layers3,LayoutGrid,ListOrdered,Magnet,Maximize2,Minus,Move,Palette,PenTool,Plus,Redo2,Ruler,Save,Scissors,Shapes,ShieldCheck,Shirt,SlidersHorizontal,Sparkles,Square,SquareDashed,Trash2,Undo2,Upload,Wand2,ZoomIn,ZoomOut} from 'lucide-react';
 import Board from './tailor/Board.jsx';
-import GarmentPreview3D from './tailor/GarmentPreview3D.jsx';
 import {BOARD_W,BOARD_H,uid,clamp,toUnit,fromUnit,num,fmt,isLine,lineLen,bbox,shift,mirrorOp,withPath,syncPiece,pieceEdges,mkPiece,lineHits,pointInPoly,fullOutline} from './tailor/geometry.js';
 import {BLOCKS,STARTERS,SIZES,DEFAULT_MEAS,DEFAULT_STYLE,STYLE_GROUPS,MEAS_FIELDS,blockOps,starterOps,restyleAll,mapProjectMeasurements} from './tailor/blocks.js';
 import {computeLayout,placedShape,layoutSvg} from './tailor/cutting.js';
@@ -62,10 +61,10 @@ async function compressImage(file,max=1200,q=.78){
 }
 const stripGroup=(ops,id)=>ops.filter(o=>o.id!==id&&o.parent!==id);
 
-export default function TailorTools(){
+export default function TailorTools({setPage}){
  const toast=useToast();
  const [boards,setBoards]=useState([]),[board,setBoard]=useState(null),[ops,setOps]=useState([]),[tool,setTool]=useState('select'),[selected,setSelected]=useState(null),[projects,setProjects]=useState([]),[projectId,setProjectId]=useState(''),[ai,setAi]=useState(null),[request,setRequest]=useState('Check the construction, seam placement, allowances and stitch sequence for this pattern.'),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false),[unit,setUnit]=useState('cm'),[zoom,setZoom]=useState(100),[tab,setTab]=useState('design'),[checked,setChecked]=useState([]),[snap,setSnap]=useState(true),[showSA,setShowSA]=useState(true),[hist,setHist]=useState({past:[],future:[]});
- const [style,setStyle]=useState(DEFAULT_STYLE),[garmentFabric,setGarmentFabric]=useState(DEFAULT_FABRIC),[fabricOn,setFabricOn]=useState(false),[fabTarget,setFabTarget]=useState('garment'),[customSeams,setCustomSeams]=useState([]),[highlight,setHighlight]=useState([]),[show3d,setShow3d]=useState(false),[pairDraft,setPairDraft]=useState({pa:'',ka:'',pb:'',kb:'',type:'seam'}),[meas,setMeas]=useState(DEFAULT_MEAS),[photo,setPhoto]=useState(null),[fab,setFab]=useState({w:150,allow:true,rotate:false,extra:5}),[stitch,setStitch]=useState(null),[sewDone,setSewDone]=useState([]),[cutAi,setCutAi]=useState(null),[busyKind,setBusyKind]=useState('');
+ const [style,setStyle]=useState(DEFAULT_STYLE),[garmentFabric,setGarmentFabric]=useState(DEFAULT_FABRIC),[fabricOn,setFabricOn]=useState(false),[fabTarget,setFabTarget]=useState('garment'),[customSeams,setCustomSeams]=useState([]),[highlight,setHighlight]=useState([]),[tryingOn,setTryingOn]=useState(false),[pairDraft,setPairDraft]=useState({pa:'',ka:'',pb:'',kb:'',type:'seam'}),[meas,setMeas]=useState(DEFAULT_MEAS),[photo,setPhoto]=useState(null),[fab,setFab]=useState({w:150,allow:true,rotate:false,extra:5}),[stitch,setStitch]=useState(null),[sewDone,setSewDone]=useState([]),[cutAi,setCutAi]=useState(null),[busyKind,setBusyKind]=useState('');
  const opsRef=useRef(ops),histRef=useRef(hist),cursorRef=useRef(null),areaRef=useRef(null),fileRef=useRef(null),swatchRef=useRef(null);
  opsRef.current=ops;histRef.current=hist;
 
@@ -194,6 +193,20 @@ export default function TailorTools(){
  };
  const clearPieceFabric=()=>{if(selPiece)commit(ops.map(o=>o.id===selPiece.id?{...o,fabric:undefined}:o))};
 
+ /* try the garment on a real fit model: save the board, then hand it to the Fit Models page */
+ const tryOn=async()=>{
+  if(!ops.some(o=>o.type==='piece'&&o.block&&/^(bodice|skirt)/.test(o.block.id)))return toast.info('Add a bodice, blouse, dress or skirt from the Design tab first. Trousers and hand-drawn pieces can\'t be shown on the model yet.');
+  setTryingOn(true);
+  try{
+   let b=board;
+   if(!b){const d=await api('/api/tailor-tools/boards',{method:'POST',body:JSON.stringify({name:'Tailor Board',projectId:projectId||null,unit})});b=d.board;setBoards(x=>[b,...x]);setBoard(b)}
+   const d=await api(`/api/tailor-tools/boards/${b.id}`,{method:'PUT',body:JSON.stringify({operations:ops,layers:layersPayload(),projectId:projectId||b.projectId||null,unit,aiContext:ai||{}})});
+   setBoard(d.board);setBoards(bs=>bs.map(x=>x.id===d.board.id?d.board:x));
+   sessionStorage.setItem('fabricnow.tryOnBoard',d.board.id);
+   if(setPage)setPage('fit-models');else toast.success('Saved. Open Fit Models to try it on.');
+  }catch(e){toast.error(e.message)}finally{setTryingOn(false)}
+ };
+
  /* seam checks */
  const seamResults=useMemo(()=>allResults(ops,customSeams,unit),[ops,customSeams,unit]);
  const seamCounts=useMemo(()=>({ok:seamResults.filter(r=>r.status==='ok').length,ease:seamResults.filter(r=>r.status==='ease').length,bad:seamResults.filter(r=>r.status==='bad').length}),[seamResults]);
@@ -283,7 +296,7 @@ export default function TailorTools(){
       <button className={snap?'on':''} onClick={()=>setSnap(s=>!s)} title="Snap to grid and points"><Magnet size={16}/></button>
       <button className={showSA?'on':''} onClick={()=>setShowSA(s=>!s)} title="Show seam allowance"><SquareDashed size={16}/></button>
       <button className={fabricOn?'on':''} onClick={()=>setFabricOn(v=>!v)} title="Show fabric on pieces"><Palette size={16}/></button>
-      <button onClick={()=>setShow3d(true)} disabled={!piecesList.length} title="3D fabric preview"><Box size={16}/></button>
+      <button onClick={tryOn} disabled={!piecesList.length||tryingOn} title="Try on a fit model"><Shirt size={16}/></button>
       <button className={photo?.visible===false?'':photo?'on':''} disabled={!photo} onClick={()=>setPhoto(p=>({...p,visible:p.visible===false}))} title="Show / hide photo">{photo?.visible===false?<EyeOff size={16}/>:<Eye size={16}/>}</button>
      </div>
      {empty&&<div className="tt-start">
@@ -385,8 +398,8 @@ export default function TailorTools(){
      <div className="tt-field"><label>Print size</label><input type="range" min="40" max="300" value={activeFabric.scale||100} onChange={e=>setFabric({scale:+e.target.value})}/></div>
      <div className="tt-field"><label>Direction</label><div className="tt-opts">{[0,45,90,135].map(d=><button key={d} className={(activeFabric.rot||0)===d?'on':''} onClick={()=>setFabric({rot:d})}>{d}°</button>)}</div></div>
      <label className="tt-check"><input type="checkbox" checked={fabricOn} onChange={e=>setFabricOn(e.target.checked)}/> Show fabric on the board</label>
-     <div className="tt-row"><button className="btn btn-primary btn-sm" onClick={()=>setShow3d(true)} disabled={!piecesList.length}><Box size={14}/> View in 3D</button>{selPiece?.fabric&&<button className="btn btn-ghost btn-sm" onClick={clearPieceFabric}>Use garment fabric on this piece</button>}</div>
-     <p className="tt-note">The print is drawn at real size, so a 16 cm circle really is 16 cm on the pattern. The 3D form shows bodice and skirt pieces only. Sleeves and trousers are not modelled yet.</p>
+     <div className="tt-row"><button className="btn btn-primary btn-sm" onClick={tryOn} disabled={!piecesList.length||tryingOn} data-no-spin>{tryingOn?<span className="ui-spinner" style={{'--spinner-size':'14px'}}/>:<Shirt size={14}/>} Try on a fit model</button>{selPiece?.fabric&&<button className="btn btn-ghost btn-sm" onClick={clearPieceFabric}>Use garment fabric on this piece</button>}</div>
+     <p className="tt-note">The print is drawn at real size, so a 16 cm circle really is 16 cm on the pattern. "Try on a fit model" saves this board and shows it on one of your 3D fit models. Bodices and skirts are shown. Sleeves and trousers are not yet.</p>
     </div>}
 
     {tab==='photo'&&<div className="tt-panel">
@@ -456,6 +469,5 @@ export default function TailorTools(){
     </div>
    </aside>
   </div>
-  {show3d&&<GarmentPreview3D ops={ops} garmentFabric={garmentFabric} onClose={()=>setShow3d(false)}/>}
  </div>
 }

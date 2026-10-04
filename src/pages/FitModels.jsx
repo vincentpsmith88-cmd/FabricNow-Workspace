@@ -1,5 +1,10 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Box, Camera, Check, FileBox, Lightbulb, Maximize2, Minimize2, Moon, Rotate3D, Ruler, Search, Sun } from 'lucide-react';
+import { Box, Camera, Check, FileBox, Lightbulb, Maximize2, Minimize2, Moon, Rotate3D, Ruler, Scissors, Search, Shirt, Sun } from 'lucide-react';
+import { api } from '../api.js';
+import { buildProfile } from './tailor/garment3d.js';
+import { withPath } from './tailor/geometry.js';
+import { PRINTS, printById, tileOf, tileSvg } from './tailor/fabrics.js';
+import './fit-garment.css';
 import FitModelViewer from '../components/FitModelViewer.jsx';
 import { FIT_MODELS, SIZE_SCALE } from '../components/fitModels.js';
 
@@ -25,7 +30,7 @@ function Silhouette({ m, child }) {
   );
 }
 
-export default function FitModels() {
+export default function FitModels({ setPage }) {
   const [modelId, setModelId] = useState(FIT_MODELS[0].id);
   const [size, setSize] = useState('M');
   const [light, setLight] = useState('studio');
@@ -35,6 +40,12 @@ export default function FitModels() {
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [full, setFull] = useState(false);
+  const [boards, setBoards] = useState([]);
+  const [boardId, setBoardId] = useState('');
+  const [boardsLoading, setBoardsLoading] = useState(true);
+  const [wear, setWear] = useState(true);
+  const [print, setPrint] = useState(null);
+  const [info, setInfo] = useState({ status: 'none' });
   const viewer = useRef(null);
   const stage = useRef(null);
 
@@ -43,6 +54,34 @@ export default function FitModels() {
   const list = useMemo(() => FIT_MODELS.filter((m) => (filter === 'all' || kindOf(m) === filter) && `${m.label} ${m.category}`.toLowerCase().includes(query.toLowerCase())), [filter, query]);
   const counts = useMemo(() => Object.fromEntries(FILTERS.map(([k]) => [k, k === 'all' ? FIT_MODELS.length : FIT_MODELS.filter((m) => kindOf(m) === k).length])), []);
   const stats = [['Height', model.measurements.height, 190], ['Chest', model.measurements.chest, 125], ['Waist', model.measurements.waist, 125], ['Hip', model.measurements.hip, 125]];
+
+  /* Boards saved in Tailor Tools. "Try on a fit model" over there leaves the board id in sessionStorage. */
+  React.useEffect(() => {
+    let dead = false;
+    api('/api/tailor-tools/boards').then((d) => {
+      if (dead) return;
+      const list = d.boards || []; setBoards(list);
+      const want = sessionStorage.getItem('fabricnow.tryOnBoard'); sessionStorage.removeItem('fabricnow.tryOnBoard');
+      if (want && list.some((b) => b.id === want)) setBoardId(want);
+    }).catch(() => {}).finally(() => { if (!dead) setBoardsLoading(false); });
+    return () => { dead = true; };
+  }, []);
+  const board = boards.find((b) => b.id === boardId);
+  const garment = useMemo(() => {
+    if (!board) return null;
+    const ops = (board.operations || []).map(withPath), profile = buildProfile(ops);
+    if (!profile.tubes.length) return { unsupported: true };
+    const layers = board.layers || [], meas = layers.find((l) => l.type === 'measurements')?.values || {};
+    const boardFabric = layers.find((l) => l.type === 'fabric')?.value || { id: 'ankara' }, fabrics = {};
+    for (const t of profile.tubes) {
+      const piece = ops.find((o) => o.id === t.pieceId), f = print || piece?.fabric || boardFabric, tile = tileOf(f);
+      fabrics[t.kind] = { svg: tileSvg(f, 24), tile: [tile.w, tile.h], scale: f.scale || 100, rot: f.rot || 0 };
+    }
+    return { profile, fabrics, meas: { bust: meas.bust || 92, waist: meas.waist || 74, hip: meas.hip || 98 }, patternHeightCm: 172 };
+  }, [board, print]);
+  const wearable = wear && garment && !garment.unsupported ? garment : null;
+  React.useEffect(() => { if (!wearable) setInfo({ status: 'none' }); }, [wearable]);
+  const pickPrint = (id) => setPrint({ id, colors: printById(id).colors.slice(), scale: print?.scale || 100, rot: print?.rot || 0 });
 
   const go = (deg) => { setActiveView(deg); setView((v) => ({ deg, n: v.n + 1 })); };
   const pick = (m) => { setModelId(m.id); go(0); };
@@ -89,7 +128,7 @@ export default function FitModels() {
 
         {/* ---------- stage ---------- */}
         <section className="fm-stage" ref={stage} aria-label="3D viewer">
-          <FitModelViewer ref={viewer} model={model} scale={scale} view={view} lighting={light} autoRotate={auto} onInteract={() => setActiveView(null)} />
+          <FitModelViewer ref={viewer} model={model} scale={scale} view={view} lighting={light} autoRotate={auto} garment={wearable} onGarmentInfo={setInfo} onInteract={() => setActiveView(null)} />
 
           <div className="fm-float fm-title">
             <span className="fm-live"><i /> Live</span>
@@ -115,6 +154,39 @@ export default function FitModels() {
 
         {/* ---------- details ---------- */}
         <aside className="fm-info" aria-label="Model details">
+          <section className="fm-panel fm-garment">
+            <div className="fm-panel-head"><span>Garment</span><small>From Tailor Tools</small></div>
+            {boardsLoading && <p className="fm-note">Loading your boards…</p>}
+            {!boardsLoading && !boards.length && <p className="fm-note">No saved boards yet. Draft a dress in Tailor Tools, save it, then try it on here.</p>}
+            {boards.length > 0 && (
+              <select className="fm-select" value={boardId} onChange={(e) => { setBoardId(e.target.value); setPrint(null); setWear(true); }} aria-label="Board to try on">
+                <option value="">No garment</option>
+                {boards.map((b, i) => <option key={b.id} value={b.id}>{b.name || 'Tailor board'} · #{boards.length - i}</option>)}
+              </select>
+            )}
+            {board && garment?.unsupported && <p className="fm-note fm-warn">This board has no bodice or skirt pieces. Add a dress, blouse or skirt from the Design tab in Tailor Tools. Trousers and hand-drawn pieces can't be shown on the model yet.</p>}
+            {garment && !garment.unsupported && (
+              <>
+                <div className="fm-garment-row">
+                  <label className="fm-switch"><input type="checkbox" checked={wear} onChange={(e) => setWear(e.target.checked)} /><i /> <span>Show on model</span></label>
+                  {print && <button type="button" className="fm-link" onClick={() => setPrint(null)}>Use board fabric</button>}
+                </div>
+                <div className="fm-sub">Try another fabric</div>
+                <div className="fm-prints">
+                  {PRINTS.map((p) => { const t = tileOf({ id: p.id }); return (
+                    <button type="button" key={p.id} className={print?.id === p.id ? 'on' : ''} onClick={() => pickPrint(p.id)} title={p.name} aria-label={p.name}>
+                      <svg viewBox={`0 0 ${t.w * 2} ${t.h * 2}`} preserveAspectRatio="xMidYMid slice"><g dangerouslySetInnerHTML={{ __html: t.markup + `<g transform="translate(${t.w} 0)">${t.markup}</g><g transform="translate(0 ${t.h})">${t.markup}</g><g transform="translate(${t.w} ${t.h})">${t.markup}</g>` }} /></svg>
+                    </button>); })}
+                </div>
+                {print && <label className="fm-range"><span>Print size</span><input type="range" min="40" max="300" value={print.scale || 100} onChange={(e) => setPrint({ ...print, scale: +e.target.value })} /></label>}
+                {info.status === 'error' && <p className="fm-note fm-warn">{info.message}</p>}
+                {info.status === 'ok' && info.notes?.map((n, i) => <p className="fm-note" key={i}>{n}</p>)}
+                <p className="fm-note">The garment is fitted to this model's real body shape. It covers the torso and hips down to the hem. Sleeves are not shown yet.</p>
+              </>
+            )}
+            {setPage && <button type="button" className="fm-open" onClick={() => setPage('tailor-tools')}><Scissors size={14} /> Open Tailor Tools</button>}
+          </section>
+
           <section className="fm-panel">
             <div className="fm-panel-head"><span>Body measurements</span><small>{model.child ? 'As supplied' : `Estimated · size ${size}`}</small></div>
             <div className="fm-stats">

@@ -1,3 +1,4 @@
+import { analyzeBody, fitGarment } from './garmentFit.js';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 /**
@@ -161,17 +162,90 @@ function createRuntime(el, M, cb) {
     return FILE_CACHE.get(file);
   }
 
-  async function loadModel(file, cm) {
+  async function loadModel(file, cm, landmarks) {
     const src = await load(file);
     if (disposed) return;
     const clone = SkeletonUtils.clone(src);
     prepare(clone); normalize(clone);
     if (current) holder.remove(current);
+    disposeGarment();
     current = clone; holder.add(clone);
+    currentFile = file; currentLandmarks = landmarks || null; currentCm = cm;
     heightM = targetHeightM = cm / 100;
     holder.scale.setScalar(heightM);
     frame(heightM);
+    applyGarment();
   }
+
+  /* ---------- garment fitted to the loaded body (patterns from Tailor Tools) ---------- */
+  const BODY_CACHE = new Map();
+  let garmentSpec = null, garmentGroup = null, garmentToken = 0, currentFile = null, currentLandmarks = null, currentCm = 175;
+  function disposeGarment() {
+    garmentToken++;
+    if (!garmentGroup) return;
+    holder.remove(garmentGroup);
+    garmentGroup.traverse((o) => { o.geometry?.dispose(); if (o.material) { o.material.map?.dispose(); o.material.dispose(); } });
+    garmentGroup = null;
+  }
+  /* The body's triangles in the holder's own space (height = 1, feet on y = 0), measured once per model file. */
+  function bodyData() {
+    if (BODY_CACHE.has(currentFile)) return BODY_CACHE.get(currentFile);
+    holder.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(holder.matrixWorld).invert(), v = new THREE.Vector3(), pos = [], idx = [];
+    let base = 0;
+    current.traverse((c) => {
+      if (!c.isMesh || !c.geometry?.attributes?.position) return;
+      const m = new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld), a = c.geometry.attributes.position;
+      for (let i = 0; i < a.count; i++) {
+        if (c.isSkinnedMesh && c.getVertexPosition) c.getVertexPosition(i, v); else v.set(a.getX(i), a.getY(i), a.getZ(i));
+        v.applyMatrix4(m); pos.push(v.x, v.y, v.z);
+      }
+      const ix = c.geometry.index;
+      if (ix) for (let i = 0; i < ix.count; i++) idx.push(ix.getX(i) + base); else for (let i = 0; i < a.count; i++) idx.push(i + base);
+      base += a.count;
+    });
+    const P = Float32Array.from(pos), I = Uint32Array.from(idx);
+    const body = analyzeBody(P, I, { landmarks: currentLandmarks }) || analyzeBody(P, I);
+    BODY_CACHE.set(currentFile, body);
+    return body;
+  }
+  function makeTexture(f) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const tex = new THREE.Texture(img), k = 100 / (f.scale || 100);
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+        tex.repeat.set(k / f.tile[0], k / f.tile[1]); tex.center.set(0, 0); tex.rotation = -(f.rot || 0) * Math.PI / 180; tex.needsUpdate = true;
+        resolve(tex);
+      };
+      img.onerror = () => reject(new Error('Could not draw the fabric.'));
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(f.svg);
+    });
+  }
+  async function applyGarment() {
+    disposeGarment();
+    const token = garmentToken;
+    if (!garmentSpec || !current || garmentSpec.visible === false) { cb.onGarmentInfo?.({ status: 'none' }); return; }
+    try {
+      const body = bodyData();
+      if (!body) { cb.onGarmentInfo?.({ status: 'error', message: "This model's body could not be measured, so the garment can't be fitted." }); return; }
+      const fit = fitGarment(garmentSpec.profile, body, { heightCm: currentCm, meas: garmentSpec.meas, patternHeightCm: garmentSpec.patternHeightCm });
+      const group = new THREE.Group();
+      for (const m of fit.meshes) {
+        const f = garmentSpec.fabrics[m.kind] || garmentSpec.fabrics.torso || garmentSpec.fabrics.skirt;
+        const tex = await makeTexture(f);
+        if (token !== garmentToken || disposed) { tex.dispose(); return; }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(m.positions, 3)); g.setAttribute('uv', new THREE.BufferAttribute(m.uvs, 2));
+        g.setIndex(new THREE.BufferAttribute(m.indices, 1)); g.computeVertexNormals();
+        group.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: .86, metalness: 0 })));
+      }
+      if (token !== garmentToken || disposed) return;
+      holder.add(group); garmentGroup = group;
+      cb.onGarmentInfo?.({ status: 'ok', notes: fit.notes });
+    } catch (e) { cb.onGarmentInfo?.({ status: 'error', message: e?.message || 'The garment could not be fitted.' }); }
+  }
+  function setGarment(spec) { garmentSpec = spec || null; applyGarment(); }
 
   function setHeight(cm) { targetHeightM = cm / 100; }
   function goTo(deg) {
@@ -211,22 +285,23 @@ function createRuntime(el, M, cb) {
   raf = requestAnimationFrame(tick);
 
   return {
-    setLighting, loadModel, setHeight, goTo, reset, snapshot,
+    setLighting, loadModel, setHeight, setGarment, goTo, reset, snapshot,
     setAutoRotate: (v) => { controls.autoRotate = !!v; },
     dispose() {
       disposed = true; cancelAnimationFrame(raf); ro.disconnect(); controls.dispose();
-      envTex.dispose(); pmrem.dispose(); renderer.dispose(); renderer.forceContextLoss?.();
+      disposeGarment(); envTex.dispose(); pmrem.dispose(); renderer.dispose(); renderer.forceContextLoss?.();
       renderer.domElement.remove();
     },
   };
 }
 
-const FitModelViewer = forwardRef(function FitModelViewer({ model, scale = 1, view, lighting = 'studio', autoRotate = false, onInteract, className = '' }, ref) {
+const FitModelViewer = forwardRef(function FitModelViewer({ model, scale = 1, view, lighting = 'studio', autoRotate = false, garment = null, onGarmentInfo, onInteract, className = '' }, ref) {
   const mount = useRef(null);
   const [rt, setRt] = useState(null);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const onInteractRef = useRef(onInteract); onInteractRef.current = onInteract;
+  const infoRef = useRef(onGarmentInfo); infoRef.current = onGarmentInfo;
   const heightCm = model ? model.measurements.height * (model.child ? 1 : scale) : 175;
   const heightRef = useRef(heightCm); heightRef.current = heightCm;
   const lightingRef = useRef(lighting); lightingRef.current = lighting;
@@ -245,7 +320,7 @@ const FitModelViewer = forwardRef(function FitModelViewer({ model, scale = 1, vi
           import('three/addons/utils/SkeletonUtils.js'),
         ]);
         if (dead || !mount.current) return;
-        runtime = createRuntime(mount.current, { THREE, OrbitControls: oc.OrbitControls, FBXLoader: fbx.FBXLoader, RoomEnvironment: re.RoomEnvironment, SkeletonUtils: su }, { onInteract: () => onInteractRef.current?.() });
+        runtime = createRuntime(mount.current, { THREE, OrbitControls: oc.OrbitControls, FBXLoader: fbx.FBXLoader, RoomEnvironment: re.RoomEnvironment, SkeletonUtils: su }, { onInteract: () => onInteractRef.current?.(), onGarmentInfo: (i) => infoRef.current?.(i) });
         runtime.setLighting(lightingRef.current);
         setRt(runtime);
       } catch (e) {
@@ -258,13 +333,14 @@ const FitModelViewer = forwardRef(function FitModelViewer({ model, scale = 1, vi
   useEffect(() => { rt?.setLighting(lighting); }, [rt, lighting]);
   useEffect(() => { rt?.setAutoRotate(autoRotate); }, [rt, autoRotate]);
   useEffect(() => { rt?.setHeight(heightCm); }, [rt, heightCm]);
+  useEffect(() => { rt?.setGarment(garment); }, [rt, garment]);
   useEffect(() => { if (rt && view) rt.goTo(view.deg); }, [rt, view]); // eslint-disable-line
 
   useEffect(() => {
     if (!rt || !model) return undefined;
     let dead = false;
     setStatus('loading'); setError('');
-    rt.loadModel(model.file, heightRef.current)
+    rt.loadModel(model.file, heightRef.current, model.landmarks)
       .then(() => { if (!dead) setStatus('ready'); })
       .catch((e) => { if (!dead) { setError(e?.message || 'This model could not be loaded.'); setStatus('error'); } });
     return () => { dead = true; };

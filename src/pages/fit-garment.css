@@ -1,0 +1,21 @@
+/* Garment panel on the Fit Models page */
+.fm-garment{display:grid;gap:10px}
+.fm-select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line,#E6E8F0);background:var(--bg,#fff);color:var(--text,#24213B);font-size:.86rem;font-weight:600}
+.fm-select:focus{outline:none;border-color:var(--orange,#E66239);box-shadow:0 0 0 3px rgba(230,98,57,.18)}
+.fm-garment-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.fm-switch{display:inline-flex;align-items:center;gap:9px;font-size:.82rem;font-weight:700;cursor:pointer}
+.fm-switch input{position:absolute;opacity:0;pointer-events:none}
+.fm-switch i{width:38px;height:22px;border-radius:99px;background:var(--slate-light,#CDD2E0);position:relative;transition:background .15s;flex:none}
+.fm-switch i::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.fm-switch input:checked+i{background:var(--orange,#E66239)}.fm-switch input:checked+i::after{transform:translateX(16px)}
+.fm-switch input:focus-visible+i{box-shadow:0 0 0 3px rgba(230,98,57,.3)}
+.fm-link{font-size:.76rem;font-weight:700;color:var(--orange-ink,#C44A1D);text-decoration:underline;text-underline-offset:2px}
+.fm-sub{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted,#6B6F85)}
+.fm-prints{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.fm-prints button{padding:0;border-radius:10px;border:2px solid transparent;overflow:hidden;aspect-ratio:1;background:var(--bg,#fff);transition:transform .12s,border-color .12s}
+.fm-prints button:hover{transform:translateY(-2px)}.fm-prints button.on{border-color:var(--orange,#E66239);box-shadow:0 0 0 2px rgba(230,98,57,.25)}
+.fm-prints svg{display:block;width:100%;height:100%}
+.fm-range{display:grid;gap:4px;font-size:.76rem;font-weight:700;color:var(--muted,#6B6F85)}.fm-range input{accent-color:var(--orange,#E66239);width:100%}
+.fm-warn{color:var(--wait,#8A5A00);background:var(--wait-bg,#FFF3D6);padding:9px 11px;border-radius:11px}
+.fm-open{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border-radius:12px;border:1px solid var(--line,#E6E8F0);font-size:.8rem;font-weight:700;color:var(--text,#24213B);background:transparent}
+.fm-open:hover{border-color:var(--orange,#E66239);background:var(--orange-wash,#FDEEE8)}

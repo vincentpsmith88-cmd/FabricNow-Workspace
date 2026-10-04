@@ -1,5 +1,6 @@
-/* Builds simple 3D garment shells (tubes) from the pattern pieces, so a fabric can be previewed on a dress form.
-   Supports bodice (to the underarm) and skirt pieces. All numbers cm. Pure geometry: no three.js here. */
+/* Reads the pattern pieces on a board and describes the garment as rings of circumference against height (cm),
+   one for the bodice and one for the skirt. components/garmentFit.js fits these onto a 3D fit model's real body.
+   Supports bodice (to the underarm) and skirt pieces. */
 import {pieceEdges} from './geometry.js';
 
 /* Horizontal extent of the polygon at height y (max x - min x of the crossings). */
@@ -26,9 +27,11 @@ export function buildProfile(ops){
  const tubes=[],notes=[];let drop=0,waistC=null;
  if(bf&&bb){
   const {pts,edges}=pieceEdges(bf),ah=edges.find(e=>/armhole/i.test(e.name)),arm=(ah?pts[ah.i1][1]:topY(bf)+20)-topY(bf);
-  const [,bot]=yRange(bf),waist=Math.min(bot,pieceWaistY(bf)),n=24;
+  const [,bot]=yRange(bf),waist=bot,n=24;
   const prof=sample(arm,waist,n,y=>widthAt(bf,y)+widthAt(bb,y));
-  tubes.push({kind:'torso',pieceId:bf.id,rings:prof,top:0});drop=waist-arm;waistC=prof[prof.length-1].C;
+  // where the waist falls on this pattern: the end of the first side-seam edge when the bodice runs below the waist, else its bottom
+  const sides=edges.filter(e=>/side seam/i.test(e.name)),wy=sides.length>1?pts[sides[0].i1][1]-topY(bf):waist;
+  tubes.push({kind:'torso',pieceId:bf.id,rings:prof,top:0,waistH:Math.max(1,Math.min(wy,bot)-arm)});drop=waist-arm;waistC=prof[prof.length-1].C;
  }
  const skirts=[sf,sb].filter(Boolean);
  if(skirts.length){
@@ -49,16 +52,3 @@ export function buildProfile(ops){
  return {tubes,height,hasTorso:!!(bf&&bb),notes};
 }
 function pieceWaistY(p){const {pts,edges}=pieceEdges(p),w=edges.find(e=>/^waist$/i.test(e.name)),t=topY(p);return (w?Math.max(pts[w.i0][1],pts[w.i1===0?pts.length-1:w.i1][1]):Math.max(...p.points.map(q=>q[1])))-t}
-
-/* Ring semi-axes from a circumference: ellipse with depth/width ratio k. */
-export function axesFor(C,k=.72){const a=C/(2*Math.PI*Math.sqrt((1+k*k)/2));return [a,a*k]}
-/* Mesh arrays for one tube. UV is in cm (so a tile of w x h cm maps with repeat = 1/w, 1/h). */
-export function tubeMesh(tube,seg=64){
- const rings=tube.rings,pos=[],uv=[],idx=[];
- rings.forEach((r,i)=>{
-  const [a,b]=axesFor(r.C),y=-(tube.top+r.h);
-  for(let j=0;j<=seg;j++){const t=j/seg*Math.PI*2;pos.push(a*Math.cos(t),y,b*Math.sin(t));uv.push(j/seg*r.C,tube.top+r.h)}
- });
- for(let i=0;i<rings.length-1;i++)for(let j=0;j<seg;j++){const a=i*(seg+1)+j,b=a+seg+1;idx.push(a,b,a+1,a+1,b,b+1)}
- return {positions:new Float32Array(pos),uvs:new Float32Array(uv),indices:new Uint32Array(idx)};
-}
