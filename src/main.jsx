@@ -8,6 +8,7 @@ import './dark.css';
 import './login.css';
 import './redesign.css';
 import './workspace-pro.css';
+import './subscription.css';
 import { installPendingButtons } from './pendingButtons.js';
 import { applyTheme, getTheme } from './theme.js';
 
