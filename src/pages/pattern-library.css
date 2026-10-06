@@ -11,10 +11,10 @@
 .pl-composer-top{display:flex;align-items:center;gap:12px}
 .pl-composer-top strong{display:block;font-size:1rem}.pl-composer-top small{color:var(--muted);font-size:.8rem}
 .pl-composer-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:11px;background:var(--grad-brand);color:#fff;box-shadow:0 8px 18px -8px rgba(196,74,29,.6)}
-.pl-input-wrap{position:relative}
-.pl-input-wrap textarea{width:100%;resize:vertical;min-height:84px;padding:14px 130px 14px 16px;border-radius:16px;border:1px solid var(--pl-line);background:var(--bg);color:var(--text);font:inherit;font-size:.92rem;line-height:1.5;outline:none;transition:border-color .15s,box-shadow .15s}
+.pl-input-wrap{display:flex;align-items:flex-end;gap:12px}
+.pl-input-wrap textarea{flex:1;resize:vertical;min-height:84px;padding:14px 16px;border-radius:16px;border:1px solid var(--pl-line);background:var(--bg);color:var(--text);font:inherit;font-size:.92rem;line-height:1.5;outline:none;transition:border-color .15s,box-shadow .15s}
 .pl-input-wrap textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(230,98,57,.18)}
-.pl-send{position:absolute;right:10px;bottom:10px;height:42px;min-width:96px;justify-content:center}
+.pl-send{height:42px;min-width:96px;justify-content:center;align-self:flex-end;margin-bottom:2px}
 .pl-composer-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
 .pl-field{display:grid;gap:4px;font-size:.72rem;font-weight:700;color:var(--muted)}
 .pl-field select{min-width:150px;max-width:260px;padding:9px 12px;border-radius:12px;border:1px solid var(--pl-line);background:var(--bg);color:var(--text);font-size:.84rem;font-weight:600}
@@ -60,4 +60,4 @@
 .pl-edit input:focus,.pl-edit select:focus,.pl-edit textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(230,98,57,.18)}
 .pl-detail-actions{display:flex;flex-wrap:wrap;gap:8px}.pl-del{margin-left:auto;color:var(--bad,#B42318)}
 
-@media(max-width:640px){.pl-edit{grid-template-columns:1fr}.pl-send{position:static;margin-top:8px;width:100%}.pl-input-wrap textarea{padding-right:16px}.pl-ideas{justify-content:flex-start}.pl-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.pl-edit{grid-template-columns:1fr}.pl-input-wrap{flex-direction:column;align-items:stretch}.pl-send{width:100%;margin-top:0;margin-bottom:0}.pl-ideas{justify-content:flex-start}.pl-grid{grid-template-columns:1fr}}
