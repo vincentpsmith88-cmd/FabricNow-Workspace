@@ -1,4 +1,4 @@
-import { LayoutDashboard, Box, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Users, Bot, Shirt, Ruler, FileText, Kanban, ShieldCheck, Database, Search, Image as ImageIcon, LayoutGrid, Library } from 'lucide-react';
+import { LayoutDashboard, Box, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Users, Bot, Shirt, Ruler, FileText, Kanban, ShieldCheck, Database, Search, Image as ImageIcon, LayoutGrid, Library, ArrowLeftRight, Ruler as RulerIcon, Palette as PaletteIcon, Spline } from 'lucide-react';
 
 const fashionItems = [
   { id:'fashion-command', label:'Command Center', icon:LayoutDashboard, sub:'Fashion production at a glance.' },
@@ -32,6 +32,11 @@ export const NAV_GROUPS = [
     {id:'gallery',label:'Gallery',icon:LayoutGrid,sub:'A visual wall of African fashion photography to save and send to Pattern Studio.'},
   ]},
   { label:'Fashion OS', items:fashionItems },
+  { label:'Converters', items:[
+    {id:'convert-image',label:'Image & vector',icon:Spline,sub:'Image to SVG, SVG to PNG, formats, sizes and PDF lookbooks.'},
+    {id:'convert-units',label:'Measurements & fabric',icon:RulerIcon,sub:'Inches, centimetres, yards, metres, fabric weight and price.'},
+    {id:'convert-style',label:'Colour & sizes',icon:PaletteIcon,sub:'HEX, RGB, HSL and CMYK, plus US, UK, EU, IT and FR clothing sizes.'},
+  ]},
   { label:'Developers', items:[
     {id:'keys',label:'API Keys',icon:KeyRound,sub:'Server-side credentials for your integration.'},
     {id:'usage',label:'Usage',icon:Activity,sub:'Processed images against your monthly allowance.'},
