@@ -13,10 +13,12 @@ export function ToastProvider({ children }) {
 
   const close = useCallback((result = true) => {
     const resolve = resolver.current;
+    const active = dialog;
     resolver.current = null;
     setDialog(null);
+    if (result && active?.onConfirm) active.onConfirm();
     resolve?.(result);
-  }, []);
+  }, [dialog]);
 
   const show = useCallback((message, kind = 'info', options = {}) => {
     setDialog({ id: nextId.current++, mode: 'message', message: String(message || ''), kind, ...options });
@@ -31,6 +33,7 @@ export function ToastProvider({ children }) {
       confirmLabel: options.confirmLabel || 'Continue',
       cancelLabel: options.cancelLabel || 'Cancel',
       busy: false,
+      onConfirm: options.onConfirm,
       ...options,
     });
   }), []);

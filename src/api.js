@@ -24,7 +24,24 @@ export async function api(path, opts = {}) {
   const text = await res.text();
   let data = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-  if (!res.ok) throw new Error(data.error || data.message || 'Request failed');
+  if (!res.ok) {
+    const isUpgradeRequired = data.code === 'API_SUBSCRIPTION_REQUIRED' || /active api subscription|upgrade to unlock/i.test(String(data.error || data.message || ''));
+    if (isUpgradeRequired) {
+      window.dispatchEvent(new CustomEvent('fabricnow:upgrade-required', {
+        detail: {
+          title: data.title || 'Upgrade to unlock pattern generation',
+          message: data.message || data.error || 'Upgrade to unlock AI-powered pattern generation.',
+          ctaLabel: data.ctaLabel || 'View plans',
+          benefits: Array.isArray(data.benefits) ? data.benefits : [],
+          target: 'billing',
+        },
+      }));
+    }
+    throw Object.assign(new Error(data.error || data.message || 'Request failed'), {
+      code: data.code || 'API_ERROR',
+      details: data,
+    });
+  }
   return data;
 }
 

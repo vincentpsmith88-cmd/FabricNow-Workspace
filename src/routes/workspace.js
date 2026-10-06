@@ -63,8 +63,16 @@ async function requireApiAccess(req, res) {
   const entitlement = getApiEntitlement(apiSub);
   if (entitlement.hasAccess) return true;
   res.status(402).json({
-    error: "An active API subscription is required to generate pattern assets.",
     code: "API_SUBSCRIPTION_REQUIRED",
+    error: "Your workspace needs an active API plan to generate pattern assets.",
+    title: "Upgrade to unlock pattern generation",
+    message: "Unlock AI-powered design generation, exports and production workflows with an active API subscription.",
+    ctaLabel: "View plans",
+    benefits: [
+      "Generate pattern assets from garment photos",
+      "Export production-ready files and design outputs",
+      "Keep your workspace on a scalable AI plan"
+    ],
   });
   return false;
 }
