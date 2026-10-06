@@ -32,6 +32,7 @@ export function ToastProvider({ children }) {
       message: options.message || 'This action cannot be undone.',
       confirmLabel: options.confirmLabel || 'Continue',
       cancelLabel: options.cancelLabel || 'Cancel',
+      benefits: options.benefits || [],
       busy: false,
       onConfirm: options.onConfirm,
       ...options,
@@ -55,11 +56,19 @@ export function ToastProvider({ children }) {
       {children}
       {dialog && (
         <div className="dialog-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !isConfirm) close(true); }}>
-          <section className={`dialog dialog-${dialog.kind}`} role={isConfirm ? 'alertdialog' : 'dialog'} aria-modal="true" aria-labelledby="workspace-dialog-title" onMouseDown={e => e.stopPropagation()}>
+          <section className={`dialog dialog-${dialog.kind} ${isConfirm ? 'dialog-confirm' : ''}`} role={isConfirm ? 'alertdialog' : 'dialog'} aria-modal="true" aria-labelledby="workspace-dialog-title" onMouseDown={e => e.stopPropagation()}>
             <button className="dialog-close" onClick={() => close(isConfirm ? false : true)} aria-label="Close"><X size={18}/></button>
-            <div className="dialog-icon"><Icon size={25}/></div>
+            <div className="dialog-hero">
+              <div className="dialog-icon"><Icon size={25}/></div>
+              <div className="dialog-badge">PRO</div>
+            </div>
             <h2 id="workspace-dialog-title">{dialog.title || (dialog.kind === 'success' ? 'Completed' : dialog.kind === 'error' ? 'Something went wrong' : 'Please review')}</h2>
             <p>{dialog.message}</p>
+            {Array.isArray(dialog.benefits) && dialog.benefits.length > 0 && (
+              <ul className="dialog-benefits">
+                {dialog.benefits.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            )}
             <div className="dialog-actions">
               {isConfirm && <button className="btn btn-ghost" onClick={() => close(false)}>{dialog.cancelLabel}</button>}
               <button autoFocus className={`btn ${dialog.kind === 'error' || dialog.kind === 'warning' ? 'btn-danger' : 'btn-primary'}`} onClick={() => close(true)}>
