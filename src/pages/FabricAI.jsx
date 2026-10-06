@@ -7,6 +7,10 @@ import { Modal } from '../components/kit.jsx';
 import './fabric-ai.css';
 
 const EMPTY = { name: '', supplier: '', composition: '', weightGsm: '', widthCm: '', color: '', pattern: '', origin: '', notes: '' };
+const parseAiFabric = (payload) => {
+  const candidate = payload?.fabric ?? payload?.data?.fabric ?? payload?.result?.fabric ?? payload?.result ?? payload?.data ?? payload;
+  return candidate && typeof candidate === 'object' ? candidate : {};
+};
 
 /* "Add from photo": the AI reads a photo of a fabric and fills in a library record. Everything it fills in can be edited. */
 export default function FabricFromPhoto({ onSaved }) {
@@ -36,14 +40,20 @@ export default function FabricFromPhoto({ onSaved }) {
       const big = (await compressImage(file, 1024, 0.82)).src, sq = await squareSwatch(big, 480), pal = await extractPalette(big, 5);
       setSource(big); setCrop(sq); setSwatch(sq); setPalette(pal);
       try {
-        const { fabric } = await api('/api/workspace-suite/fabrics/ai-analyze', { method: 'POST', body: JSON.stringify({ imageDataUrl: big }) });
-        setForm({ ...EMPTY, name: fabric.name || '', color: fabric.color || '', pattern: fabric.pattern || '', composition: fabric.composition || '', origin: fabric.origin || '',
-          weightGsm: fabric.weightGsm ?? '', widthCm: fabric.widthCm ?? '', notes: fabric.notes || '' });
-        if (fabric.palette?.length) setPalette(fabric.palette);
-        setMeta({ ai: true, suggestedUses: fabric.suggestedUses || [], repeatCm: fabric.repeatCm });
-        setNotice('The AI filled these in from your photo. They are estimates, so check them before you rely on them.');
+        const payload = await api('/api/workspace-suite/fabrics/ai-analyze', { method: 'POST', body: JSON.stringify({ imageDataUrl: big }) });
+        const fabric = parseAiFabric(payload);
+        if (!fabric || Object.keys(fabric).length === 0) {
+          setNotice('The AI returned an unreadable result. Please try again, or fill in the details yourself.');
+        } else {
+          setForm({ ...EMPTY, name: fabric.name || '', color: fabric.color || '', pattern: fabric.pattern || '', composition: fabric.composition || '', origin: fabric.origin || '',
+            weightGsm: fabric.weightGsm ?? '', widthCm: fabric.widthCm ?? '', notes: fabric.notes || '' });
+          if (fabric.palette?.length) setPalette(fabric.palette);
+          setMeta({ ai: true, suggestedUses: fabric.suggestedUses || [], repeatCm: fabric.repeatCm });
+          setNotice('The AI filled these in from your photo. They are estimates, so check them before you rely on them.');
+        }
       } catch (e) {
-        setNotice(`${e.message} You can still fill in the details yourself.`);
+        const msg = e && e.message ? e.message : 'The AI could not read that fabric photo.';
+        setNotice(`${msg} Please try again, or fill in the details yourself.`);
       }
       setStage('review');
     } catch (e) { setError(e.message); setStage('pick'); }
