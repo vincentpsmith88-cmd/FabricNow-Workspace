@@ -253,3 +253,10 @@
 .tt-edge-hit{cursor:move}
 .tt-slash{stroke:#C44A1D}
 
+
+/* fabrics from the Fabric Library */
+.tt-libfab{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tt-libfab button{display:grid;gap:4px;padding:4px;border-radius:12px;border:1.5px solid var(--tt-line);background:var(--bg);color:var(--text);font-size:.64rem;font-weight:700;text-align:center;transition:all .15s}
+.tt-libfab button:hover{border-color:var(--orange)}.tt-libfab button.on{border-color:var(--orange);box-shadow:0 0 0 3px rgba(230,98,57,.2)}
+.tt-libfab img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block}
+.tt-libfab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px 2px}

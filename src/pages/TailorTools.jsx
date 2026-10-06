@@ -5,6 +5,8 @@ import {Bot,Check,CheckCircle2,ChevronDown,Circle,Copy,Crosshair,Divide,Download
 import Board from './tailor/Board.jsx';
 import {BOARD_W,BOARD_H,uid,clamp,toUnit,fromUnit,num,fmt,isLine,lineLen,bbox,shift,mirrorOp,withPath,syncPiece,pieceEdges,mkPiece,lineHits,pointInPoly,fullOutline} from './tailor/geometry.js';
 import {BLOCKS,STARTERS,SIZES,DEFAULT_MEAS,DEFAULT_STYLE,STYLE_GROUPS,MEAS_FIELDS,blockOps,starterOps,restyleAll,mapProjectMeasurements} from './tailor/blocks.js';
+import {seedOps} from './patterns/seed.js';
+import {toDataUrl} from '../imageTools.js';
 import {computeLayout,placedShape,layoutSvg} from './tailor/cutting.js';
 import {splitPiece,spreadPiece,presetLine} from './tailor/manipulate.js';
 import {allResults,edgeOptions} from './tailor/seams.js';
@@ -64,7 +66,7 @@ const stripGroup=(ops,id)=>ops.filter(o=>o.id!==id&&o.parent!==id);
 export default function TailorTools({setPage}){
  const toast=useToast();
  const [boards,setBoards]=useState([]),[board,setBoard]=useState(null),[ops,setOps]=useState([]),[tool,setTool]=useState('select'),[selected,setSelected]=useState(null),[projects,setProjects]=useState([]),[projectId,setProjectId]=useState(''),[ai,setAi]=useState(null),[request,setRequest]=useState('Check the construction, seam placement, allowances and stitch sequence for this pattern.'),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false),[unit,setUnit]=useState('cm'),[zoom,setZoom]=useState(100),[tab,setTab]=useState('design'),[checked,setChecked]=useState([]),[snap,setSnap]=useState(true),[showSA,setShowSA]=useState(true),[hist,setHist]=useState({past:[],future:[]});
- const [style,setStyle]=useState(DEFAULT_STYLE),[garmentFabric,setGarmentFabric]=useState(DEFAULT_FABRIC),[fabricOn,setFabricOn]=useState(false),[fabTarget,setFabTarget]=useState('garment'),[customSeams,setCustomSeams]=useState([]),[highlight,setHighlight]=useState([]),[tryingOn,setTryingOn]=useState(false),[pairDraft,setPairDraft]=useState({pa:'',ka:'',pb:'',kb:'',type:'seam'}),[meas,setMeas]=useState(DEFAULT_MEAS),[photo,setPhoto]=useState(null),[fab,setFab]=useState({w:150,allow:true,rotate:false,extra:5}),[stitch,setStitch]=useState(null),[sewDone,setSewDone]=useState([]),[cutAi,setCutAi]=useState(null),[busyKind,setBusyKind]=useState('');
+ const [style,setStyle]=useState(DEFAULT_STYLE),[garmentFabric,setGarmentFabric]=useState(DEFAULT_FABRIC),[fabricOn,setFabricOn]=useState(false),[fabTarget,setFabTarget]=useState('garment'),[customSeams,setCustomSeams]=useState([]),[highlight,setHighlight]=useState([]),[tryingOn,setTryingOn]=useState(false),[libFabrics,setLibFabrics]=useState([]),[pairDraft,setPairDraft]=useState({pa:'',ka:'',pb:'',kb:'',type:'seam'}),[meas,setMeas]=useState(DEFAULT_MEAS),[photo,setPhoto]=useState(null),[fab,setFab]=useState({w:150,allow:true,rotate:false,extra:5}),[stitch,setStitch]=useState(null),[sewDone,setSewDone]=useState([]),[cutAi,setCutAi]=useState(null),[busyKind,setBusyKind]=useState('');
  const opsRef=useRef(ops),histRef=useRef(hist),cursorRef=useRef(null),areaRef=useRef(null),fileRef=useRef(null),swatchRef=useRef(null);
  opsRef.current=ops;histRef.current=hist;
 
@@ -76,7 +78,25 @@ export default function TailorTools({setPage}){
   setStyle({...DEFAULT_STYLE,...(sty?.values||{})});setGarmentFabric(fb?.value?.id||fb?.value?.src?fb.value:DEFAULT_FABRIC);setFabricOn(!!fb?.on);setCustomSeams(Array.isArray(sm?.items)?sm.items:[]);setHighlight([]);
   setSelected(null);setAi(null);setStitch(null);setCutAi(null);setHist({past:[],future:[]});
  };
- useEffect(()=>{Promise.allSettled([api('/api/tailor-tools/boards'),api('/api/workspace-suite/projects?limit=50')]).then(([b,p])=>{if(b.status==='fulfilled'){setBoards(b.value.boards||[]);if(b.value.boards?.[0])applyBoard(b.value.boards[0])}if(p.status==='fulfilled')setProjects(p.value.projects||[])})},[]);
+ /* A design chosen in the Pattern Library arrives through sessionStorage and starts a fresh board. */
+ const applySeed=seed=>{
+  try{
+   const {ops:o}=seedOps(seed);
+   setBoard(null);setProjectId('');setOps(o);setStyle({...DEFAULT_STYLE,...seed.style});setMeas({...DEFAULT_MEAS,...seed.meas});
+   setSelected(null);setAi(null);setStitch(null);setCutAi(null);setHist({past:[],future:[]});setTab('design');
+   toast.info(`Started "${seed.name}" in size ${seed.size}. ${(seed.notes||[]).join(' ')}`.trim());
+  }catch(e){toast.error('Could not start a pattern from that design.')}
+ };
+ useEffect(()=>{
+  let seed=null;
+  try{const raw=sessionStorage.getItem('fabricnow.tailorSeed');if(raw){seed=JSON.parse(raw);sessionStorage.removeItem('fabricnow.tailorSeed')}}catch{}
+  Promise.allSettled([api('/api/tailor-tools/boards'),api('/api/workspace-suite/projects?limit=50')]).then(([b,p])=>{
+   if(b.status==='fulfilled'){setBoards(b.value.boards||[]);if(!seed&&b.value.boards?.[0])applyBoard(b.value.boards[0])}
+   if(p.status==='fulfilled')setProjects(p.value.projects||[]);
+   if(seed)applySeed(seed);
+  });
+ },[]);
+ useEffect(()=>{if(tab!=='fabric'||libFabrics.length)return;api('/api/workspace-suite/fabrics').then(d=>setLibFabrics((d.fabrics||[]).filter(f=>f.imageUrl))).catch(()=>{})},[tab]);
  useEffect(()=>{const el=areaRef.current;const h=e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();setZoom(z=>clamp(z+(e.deltaY<0?8:-8),50,300))};el.addEventListener('wheel',h,{passive:false});return()=>el.removeEventListener('wheel',h)},[]);
 
  /* history */
@@ -190,6 +210,11 @@ export default function TailorTools({setPage}){
  const onSwatchFile=async e=>{
   const f=e.target.files?.[0];e.target.value='';if(!f)return;
   try{const {src}=await compressImage(f,420,.8);setFabric({id:undefined,src,tile:[20,20],colors:[]})}catch(err){toast.error(err.message)}
+ };
+ const pickLibFabric=async f=>{
+  const src=await toDataUrl(f.imageUrl);
+  if(!src)return toast.info('That swatch cannot be used on the pattern. Add it again with "Add from photo" in the Fabric Library.');
+  const rep=Number(f.meta?.repeatCm)||20;setFabric({id:undefined,src,tile:[rep,rep],colors:[],name:f.name});
  };
  const clearPieceFabric=()=>{if(selPiece)commit(ops.map(o=>o.id===selPiece.id?{...o,fabric:undefined}:o))};
 
@@ -393,6 +418,7 @@ export default function TailorTools({setPage}){
      <div className="tt-seg tt-seg-wide"><button className={fabTarget==='garment'?'on':''} onClick={()=>setFabTarget('garment')}>Whole garment</button><button className={fabTarget==='piece'?'on':''} disabled={!selPiece} onClick={()=>setFabTarget('piece')}>{selPiece?`Only ${selPiece.name}`:'Selected piece'}</button></div>
      <div className="tt-prints">{PRINTS.map(p=>{const t=tileOf({id:p.id});return <button key={p.id} className={activeFabric.id===p.id?'on':''} onClick={()=>setFabric({id:p.id})} title={p.name}><svg viewBox={`0 0 ${t.w*2} ${t.h*2}`} preserveAspectRatio="xMidYMid slice"><g dangerouslySetInnerHTML={{__html:t.markup+`<g transform="translate(${t.w} 0)">${t.markup}</g><g transform="translate(0 ${t.h})">${t.markup}</g><g transform="translate(${t.w} ${t.h})">${t.markup}</g>`}}/></svg><span>{p.name}</span></button>})}
       <button className={activeFabric.src?'on':''} onClick={()=>swatchRef.current?.click()}><div className="tt-print-up"><Upload size={18}/></div><span>Your fabric photo</span></button></div>
+     {libFabrics.length>0&&<><div className="tt-sub">From your Fabric Library</div><div className="tt-libfab">{libFabrics.map(f=><button key={f.id} className={activeFabric.name===f.name&&activeFabric.src?'on':''} onClick={()=>pickLibFabric(f)} title={f.name}><img src={f.imageUrl} alt={f.name}/><span>{f.name}</span></button>)}</div></>}
      {!activeFabric.src&&<div className="tt-colors">{(activeFabric.colors?.length?activeFabric.colors:printById(activeFabric.id).colors).map((c,i)=><label key={i}><input type="color" value={c} onChange={e=>setFabColor(i,e.target.value)}/><span>Colour {i+1}</span></label>)}</div>}
      {activeFabric.src&&<div className="tt-field"><label>One repeat is ({unit})</label><input type="number" min="1" value={Number(toUnit(activeFabric.tile?.[0]||20,unit).toFixed(1))} onChange={e=>{const v=fromUnit(parseFloat(e.target.value),unit);if(v>0)setFabric({tile:[v,v]})}}/></div>}
      <div className="tt-field"><label>Print size</label><input type="range" min="40" max="300" value={activeFabric.scale||100} onChange={e=>setFabric({scale:+e.target.value})}/></div>

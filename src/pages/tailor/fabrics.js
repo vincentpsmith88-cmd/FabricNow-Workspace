@@ -16,8 +16,9 @@ export const PRINTS=[
 ];
 export const printById=id=>PRINTS.find(p=>p.id===id)||PRINTS[0];
 /* A fabric setting: {id, colors, scale (%), rot (deg)} or {src, tile, scale, rot} for an uploaded swatch photo. */
+const esc=v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 export function tileOf(f){
- if(f?.src)return {w:f.tile?.[0]||20,h:f.tile?.[1]||20,markup:`<image href="${f.src}" x="0" y="0" width="${f.tile?.[0]||20}" height="${f.tile?.[1]||20}" preserveAspectRatio="none"/>`};
+ if(f?.src)return {w:f.tile?.[0]||20,h:f.tile?.[1]||20,markup:`<image href="${esc(f.src)}" x="0" y="0" width="${f.tile?.[0]||20}" height="${f.tile?.[1]||20}" preserveAspectRatio="none"/>`};
  const p=printById(f?.id),cols=(f?.colors?.length?f.colors:p.colors);
  return {w:p.tile[0],h:p.tile[1],markup:p.m([...cols,...p.colors.slice(cols.length)])};
 }

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardCheck, Factory, FileText, Flame, Gauge, Kanban, LayoutGrid, Layers, Palette, Percent, Plus, Rows3, Ruler, Scale, ShieldCheck, Shirt, Store, Tags, Timer, XCircle } from 'lucide-react';
 import { api } from '../api.js';
+import FabricFromPhoto from './FabricAI.jsx';
 import { cap } from '../usage.js';
 import {
   Avatar, Badge, Chips, Columns, Donut, ErrorBanner, FormFields, HBars, KpiCard, KpiGrid, Modal, PageHead, PageSkeleton, Panel,
@@ -24,7 +25,7 @@ function useResource(path, key) {
 /** One analytics page: header, KPI cards, insight charts, toolbar (search / filter / view), results, create modal. */
 function ResourcePage({
   eyebrow, title, description, endpoint, listKey, createLabel, createIcon: CreateIcon = Plus, onCreate, modal,
-  kpis, insights, filter, search, renderCard, renderBoard, columns, views = ['cards', 'table'], empty, noun = 'item',
+  kpis, insights, filter, search, renderCard, renderBoard, columns, views = ['cards', 'table'], empty, noun = 'item', extraActions,
 }) {
   const { items, loading, error, reload } = useResource(endpoint, listKey);
   const [snack, push] = useSnack();
@@ -61,7 +62,7 @@ function ResourcePage({
   }, [items, query, fv, filter, search]);
 
   const toggles = views.map((v) => VIEWS[v]);
-  const actions = <button className="btn btn-primary" onClick={openCreate}><CreateIcon size={15} /> {createLabel}</button>;
+  const actions = <>{extraActions?.(ctx)}<button className="btn btn-primary" onClick={openCreate}><CreateIcon size={15} /> {createLabel}</button></>;
 
   return (
     <div className="wp">
@@ -110,6 +111,7 @@ export function FabricLibrary() {
       eyebrow="MATERIALS · FABRIC INTELLIGENCE" title="Fabric Library" noun="fabric"
       description="A shared material library for your company — reuse the same fabric records across designs, tech packs and production."
       endpoint="/api/workspace-suite/fabrics" listKey="fabrics" createLabel="Add fabric"
+      extraActions={(ctx) => <FabricFromPhoto onSaved={(name) => { ctx.reload(); ctx.push(`“${name}” was added from your photo.`); }} />}
       empty={{ icon: Palette, title: 'Build your material library', body: 'Add the fabrics you source — composition, weight, width and supplier — so designers and production always work from the same data.', action: 'Add your first fabric', hints: ['Reusable across products', 'Searchable by fibre, colour and supplier', 'Shared with authorised teammates'] }}
       modal={{
         kicker: 'MATERIALS', title: 'Add fabric', description: 'Add a material record to your company library.', icon: Palette, success: 'Fabric added to the library.',
@@ -146,7 +148,7 @@ export function FabricLibrary() {
       search={(f) => [f.name, f.supplier, f.composition, f.color, f.pattern, f.origin].join(' ')}
       renderCard={(f) => (
         <article className="wp-card wp-fabric" key={f.id}>
-          <div className="wp-swatch" style={{ '--sw': colorFromText(f.color || f.name) }}><span>{f.color || 'No colour'}</span></div>
+          <div className={`wp-swatch${f.imageUrl ? ' has-img' : ''}`} style={f.imageUrl ? { backgroundImage: `url(${JSON.stringify(f.imageUrl)})` } : { '--sw': colorFromText(f.color || f.name) }}><span>{f.color || 'No colour'}</span>{f.meta?.palette?.length > 0 && <i className="wp-sw-dots">{f.meta.palette.slice(0, 5).map((c) => <b key={c} style={{ background: c }} />)}</i>}{f.meta?.ai && <em className="wp-sw-ai">AI</em>}</div>
           <div className="wp-card-body">
             <h4>{f.name}</h4>
             <p>{[f.pattern, f.origin].filter(Boolean).join(' · ') || 'No pattern or origin'}</p>

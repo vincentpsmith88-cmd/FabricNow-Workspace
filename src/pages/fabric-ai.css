@@ -1,0 +1,25 @@
+.fai-btn{white-space:nowrap}
+.fai-drop{display:grid;justify-items:center;gap:8px;padding:38px 20px;border-radius:20px;border:2px dashed var(--line,#E6E8F0);background:var(--bg);text-align:center;color:var(--text);transition:all .15s}
+.fai-drop svg{color:var(--orange-ink,#C44A1D)}.fai-drop small{color:var(--muted);max-width:340px;line-height:1.5}
+.fai-drop.over{border-color:var(--orange);background:var(--orange-wash,#FDEEE8)}
+.fai-reading{display:grid;place-items:center;min-height:240px;color:var(--orange-ink,#C44A1D)}
+.fai-review{display:grid;grid-template-columns:240px 1fr;gap:20px;align-items:start}
+.fai-visual{display:grid;gap:10px}
+.fai-swatch{aspect-ratio:1;border-radius:18px;background-size:cover;background-position:center;border:1px solid var(--line,#E6E8F0);box-shadow:var(--shadow-sm)}
+.fai-palette{display:flex;gap:6px}.fai-palette span{flex:1;height:22px;border-radius:7px;border:1px solid rgba(0,0,0,.08)}
+.fai-visual-actions{display:flex;flex-wrap:wrap;gap:6px}
+.fai-note{font-size:.72rem;line-height:1.45;color:var(--muted)}
+.fai-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fai-form .wide{grid-column:1/-1}
+.fai-form label{display:grid;gap:4px;font-size:.72rem;font-weight:700;color:var(--muted)}
+.fai-form input,.fai-form textarea{padding:9px 12px;border-radius:12px;border:1px solid var(--line,#E6E8F0);background:var(--bg);color:var(--text);font:inherit;font-size:.86rem;font-weight:500;outline:none}
+.fai-form input:focus,.fai-form textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(230,98,57,.18)}
+.fai-notice{grid-column:1/-1;margin:0;padding:10px 12px;border-radius:12px;font-size:.78rem;line-height:1.45;background:var(--wait-bg,#FFF3D6);color:var(--wait,#8A5A00)}
+.fai-uses{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.fai-uses span{font-size:.72rem;font-weight:700;color:var(--muted)}
+.fai-uses i{font-style:normal;padding:4px 10px;border-radius:99px;font-size:.74rem;font-weight:700;background:var(--line-soft);color:var(--text)}
+@media(max-width:700px){.fai-review{grid-template-columns:1fr}.fai-swatch{max-width:240px}.fai-form{grid-template-columns:1fr}}
+/* fabric cards that have a photo swatch */
+.wp-swatch.has-img{background-size:cover;background-position:center}
+.wp-swatch .wp-sw-dots{position:absolute;left:10px;bottom:10px;display:flex;gap:4px}
+.wp-swatch .wp-sw-dots b{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.wp-swatch .wp-sw-ai{position:absolute;right:10px;top:10px;font-style:normal;font-size:.62rem;font-weight:800;letter-spacing:.08em;padding:3px 7px;border-radius:99px;background:rgba(36,33,59,.78);color:#fff}
