@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftRight, Check, Copy, Download, FileImage, FileText, Image as ImageIcon, Palette, Ruler, Scale, Scissors, Shirt, Spline, Upload, X } from 'lucide-react';
 import { api } from '../api.js';
-import { LoadingButton } from '../components/ui.jsx';
 import {
   LENGTH, WEIGHT, MEN, WOMEN, baseName, buildPdf, canvasBlob, cmykToRgb, convert, fmtBytes, fmtNum, hexToRgb, hslToRgb,
   normaliseSvg, rasterise, rgbToCmyk, rgbToHex, rgbToHsl, svgSize, toFraction, weightClass,
@@ -125,9 +124,9 @@ function FileTool({ title, body, badge, accept, exts, multiple, actionLabel, opt
       <div className="cv-opts">{options.render(opts, (p) => setOpts((o) => ({ ...o, ...p })))}</div>
       {error && <div className="error" role="alert">{error}</div>}
       <div className="cv-actions">
-        <LoadingButton className="btn btn-primary" busy={busy} disabled={!files.length} onClick={run} data-no-spin>
-          <ArrowLeftRight size={16} />{busy ? 'Converting…' : actionLabel}
-        </LoadingButton>
+        <button className={`btn btn-primary ${busy ? 'is-pending' : ''}`} disabled={!files.length} aria-busy={busy} onClick={run} data-no-spin>
+          {!busy && <ArrowLeftRight size={16} />}{actionLabel}
+        </button>
       </div>
 
       {results.length > 0 && (

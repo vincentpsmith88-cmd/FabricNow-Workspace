@@ -47,7 +47,9 @@
 .sub-total small{color:var(--s-muted);font-size:.76rem;line-height:1.5}
 .sub-cta{display:flex;align-items:center;justify-content:center;gap:9px;height:52px;border-radius:16px;font-weight:800;font-size:.98rem;color:#fff;background:linear-gradient(135deg,#F08A63,#E66239 55%,#C44A1D);box-shadow:0 10px 30px rgba(230,98,57,.35),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .15s,box-shadow .15s,opacity .15s}
 .sub-cta:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 14px 36px rgba(230,98,57,.45),inset 0 1px 0 rgba(255,255,255,.25)}
-.sub-cta:disabled{opacity:.7;cursor:progress}
+.sub-cta.is-pending{pointer-events:none;cursor:progress;opacity:.92}
+.sub-cta.is-pending::before{content:"";flex:none;width:16px;height:16px;border-radius:50%;border:2.2px solid currentColor;border-right-color:transparent;animation:fnspin .7s linear infinite}
+.sub-cta.is-pending::after{display:none!important}.sub-cta.is-pending>*{opacity:1!important}
 .sub-fine{display:flex;gap:7px;align-items:flex-start;justify-content:center;margin:0;color:var(--s-muted);font-size:.74rem;line-height:1.5;text-align:center}.sub-fine svg{flex:none;margin-top:2px}
 .sub-later{align-self:center;color:var(--s-muted);font-size:.84rem;font-weight:700;padding:6px 12px;border-radius:10px}.sub-later:hover{color:var(--s-text);background:rgba(255,255,255,.06)}
 

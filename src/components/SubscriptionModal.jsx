@@ -115,8 +115,8 @@ export default function SubscriptionModal({ open, detail, onClose }) {
             <small>Billed {money(PLAN.price)}/month until canceled. Cancel any time from Manage subscription.</small>
           </div>
 
-          <button className="sub-cta" onClick={subscribe} disabled={busy} data-no-spin autoFocus>
-            <Lock size={16} />{busy ? 'Redirecting to checkout…' : `Subscribe for ${money(PLAN.price)}/mo`}
+          <button className={`sub-cta ${busy ? 'is-pending' : ''}`} onClick={subscribe} aria-busy={busy} data-no-spin autoFocus>
+            {!busy && <Lock size={16} />}{`Subscribe for ${money(PLAN.price)}/mo`}
           </button>
           <p className="sub-fine"><ShieldCheck size={14} />Payment is completed on Stripe. FabricNow never sees your card details.</p>
           <button className="sub-later" onClick={onClose} data-no-spin>Not now</button>
