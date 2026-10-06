@@ -6,6 +6,7 @@ import {getUsage,isRunning} from './usage.js';
 import {Sidebar,Topbar,BottomNav} from './components/Shell.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import UsageAlert from './components/UsageAlert.jsx';
+import {setSubscribed} from './api.js';
 import SubscriptionModal from './components/SubscriptionModal.jsx';
 import {LogoMark} from './components/Logo.jsx';
 import {Skeleton} from './components/ui.jsx';
@@ -43,6 +44,7 @@ export default function App(){
  const loadCompanies=async()=>{setCompanyLoading(true);try{let ctx;try{ctx=await loadCompanyContext()}catch(e){selectCompany();ctx=await loadCompanyContext()}if(live)setCompanyContext(ctx)}catch(e){if(live)setCompanyContext(null)}finally{if(live)setCompanyLoading(false)}};loadCompanies();return()=>{live=false};
 },[user]);
  const [upgrade,setUpgrade]=useState(null);
+ useEffect(()=>{if(apiStatus)setSubscribed(getUsage(apiStatus).active)},[apiStatus]);
  useEffect(()=>{const onUpgrade=(e)=>setUpgrade(e.detail||{}); window.addEventListener('fabricnow:upgrade-required', onUpgrade); return ()=>window.removeEventListener('fabricnow:upgrade-required', onUpgrade);}, []);
  useEffect(()=>{if(!user)return;let live=true;const ping=()=>api('/api/workspace/health').then(d=>live&&setHealth(d.engine===true?'ok':'engine')).catch(()=>live&&setHealth('api'));ping();const id=setInterval(ping,60000);return()=>{live=false;clearInterval(id)}},[user]);
  useEffect(()=>{if(!localStorage.getItem(TOKEN_KEY))return;api('/api/auth/me').then(d=>setUser(d.user)).catch(()=>localStorage.removeItem(TOKEN_KEY)).finally(()=>setChecking(false))},[]);

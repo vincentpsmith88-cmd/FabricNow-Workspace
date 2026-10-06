@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { isUpgradeMessage } from './api.js';
 import { CheckCircle2, AlertCircle, Info, TriangleAlert, X } from 'lucide-react';
 
 const ToastCtx = createContext({ push: () => {}, success: () => {}, error: () => {}, info: () => {}, confirm: async () => false });
@@ -21,6 +22,7 @@ export function ToastProvider({ children }) {
   }, [dialog]);
 
   const show = useCallback((message, kind = 'info', options = {}) => {
+    if (kind === 'error' && isUpgradeMessage(message)) return; // the subscription modal handles this
     setDialog({ id: nextId.current++, mode: 'message', message: String(message || ''), kind, ...options });
   }, []);
 

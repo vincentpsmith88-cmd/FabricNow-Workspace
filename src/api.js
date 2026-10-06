@@ -5,7 +5,35 @@ export const GOOGLE_AUTH_PATH = import.meta.env.VITE_GOOGLE_AUTH_PATH || '/api/a
 export const TOKEN_KEY = 'fabricnow_token';
 export const COMPANY_KEY = 'fabricnow_company_id';
 
+
+// ---- Subscription gate -------------------------------------------------------------------------
+// null = not known yet (the server decides), true/false once /api/billing/api-status has answered.
+let subscribed = null;
+export const setSubscribed = (v) => { subscribed = v; };
+export const UPGRADE_MSG = 'Choose a plan to use this feature.';
+export const isUpgradeMessage = (m) => m === UPGRADE_MSG || /active api (plan|subscription)|upgrade to unlock|api plan is required/i.test(String(m || ''));
+
+// Every endpoint that generates something. Matched on POST only.
+const GENERATORS = [
+  [/^\/api\/tailor-tools\/(ai|stitch-plan|cutting-layout)/, 'tailor'],
+  [/^\/api\/workspace\/(patterns|tools|jobs\/[^/]+\/grade)/, 'pattern'],
+  [/^\/api\/workspace-suite\/fabrics\/ai-/, 'fabric'],
+  [/^\/api\/pattern-library\/ai/, 'library'],
+  [/^\/api\/assistant\//, 'assistant'],
+];
+const kindOf = (path) => { const p = String(path).split('?')[0]; const hit = GENERATORS.find(([re]) => re.test(p)); return hit ? hit[1] : null; };
+
+export function requestUpgrade(kind = 'pattern', extra = {}) {
+  window.dispatchEvent(new CustomEvent('fabricnow:upgrade-required', { detail: { kind, target: 'billing', ...extra } }));
+}
+
 export async function api(path, opts = {}) {
+  const method = String(opts.method || 'GET').toUpperCase();
+  const genKind = method === 'POST' ? kindOf(path) : null;
+  if (genKind && subscribed === false) {
+    requestUpgrade(genKind);
+    throw Object.assign(new Error(UPGRADE_MSG), { code: 'API_SUBSCRIPTION_REQUIRED' });
+  }
   const token = localStorage.getItem(TOKEN_KEY);
   const headers = {
     ...(opts.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
@@ -29,6 +57,7 @@ export async function api(path, opts = {}) {
     if (isUpgradeRequired) {
       window.dispatchEvent(new CustomEvent('fabricnow:upgrade-required', {
         detail: {
+          kind: kindOf(path) || 'pattern',
           title: data.title || 'Upgrade to unlock pattern generation',
           message: data.message || data.error || 'Upgrade to unlock AI-powered pattern generation.',
           ctaLabel: data.ctaLabel || 'View plans',

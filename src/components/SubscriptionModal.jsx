@@ -10,6 +10,14 @@ const PIECES = [
   { d: 'M74 84 Q92 78 112 86 L108 130 Q92 136 70 130 Z', label: 'Facing' },
 ];
 
+const KINDS = {
+  pattern: { head: 'Generate patterns on autopilot', t: 'Agbada · size M', s: '4 pieces, grain lines, seam allowance', now: 'Pattern generation', inc: '250 images / month' },
+  tailor: { head: 'Let AI plan your stitching and cutting', t: 'Stitch plan · 12 steps', s: 'Sewing order, allowances, cutting advice', now: 'Tailor Tools AI', inc: 'Included' },
+  fabric: { head: 'Turn any fabric photo into a swatch', t: 'Ankara swatch · repeat tile', s: 'Colours, motif and weave detected', now: 'Fabric AI', inc: 'Included' },
+  library: { head: 'Generate designs for your pattern library', t: 'Kaftan · 6 variations', s: 'Ready to edit and save', now: 'Library AI', inc: 'Included' },
+  assistant: { head: 'Ask the FabricNow assistant anything', t: 'How much fabric for a boubou?', s: 'Answers using your projects', now: 'Assistant', inc: 'Included' },
+};
+
 const ROWS = [
   ['Pattern generation', 'Locked', '250 images / month'],
   ['Exports and manifest', 'Locked', 'Included'],
@@ -19,6 +27,7 @@ const ROWS = [
 ];
 
 export default function SubscriptionModal({ open, detail, onClose }) {
+  const K = KINDS[detail?.kind] || KINDS.pattern;
   const toast = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -63,20 +72,20 @@ export default function SubscriptionModal({ open, detail, onClose }) {
             <div className="sub-prompt">
               <span className="sub-prompt-dot" />
               <div>
-                <strong>Agbada · size M</strong>
-                <small>4 pieces, grain lines, seam allowance</small>
+                <strong>{K.t}</strong>
+                <small>{K.s}</small>
               </div>
               <Scissors size={16} />
             </div>
           </div>
 
-          <h2>Generate patterns on autopilot</h2>
+          <h2>{K.head}</h2>
           <p>{detail?.message || 'Unlock AI pattern generation, exports and production workflows.'}</p>
 
           <table className="sub-table">
             <thead><tr><th /><th>Now</th><th className="on">{PLAN.name}</th></tr></thead>
             <tbody>
-              {ROWS.map(([a, b, c]) => <tr key={a}><td>{a}</td><td>{b}</td><td className="on">{c}</td></tr>)}
+              {[[K.now, 'Locked', K.inc], ...ROWS.slice(1)].map(([a, b, c]) => <tr key={a}><td>{a}</td><td>{b}</td><td className="on">{c}</td></tr>)}
             </tbody>
           </table>
         </aside>
