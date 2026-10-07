@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftRight, Check, Copy, Download, Eraser, FileImage, FileText, Image as ImageIcon, PenTool, Palette, Pipette, Ruler, Scale, Scissors, Shirt, Smartphone, Spline, Upload, X } from 'lucide-react';
-import { api } from '../api.js';
+import { api, postForBlob } from '../api.js';
 import {
   LENGTH, WEIGHT, MEN, WOMEN, baseName, buildPdf, canvasBlob, cmykToRgb, convert, fmtBytes, fmtNum, hexToRgb, hslToRgb,
   normaliseSvg, rasterise, rgbToCmyk, rgbToHex, rgbToHsl, svgSize, toFraction, weightClass,
@@ -310,16 +310,19 @@ function HeicToJpg() {
 function RemoveBackground() {
   return (
     <FileTool
-      title="Remove background" badge="Runs in your browser"
-      body="Cut a garment or fabric out of a plain studio or wall background. It removes the colour that touches the photo's edge, so white prints inside the garment stay."
-      accept=".png,.jpg,.jpeg,.webp,image/*" exts={IMG_EXT} multiple actionLabel="Remove background" emptyHint="Works best on an even, plain background. Busy backgrounds will not cut out cleanly."
+      title="Remove background" badge="AI cut-out on the FabricNow server"
+      body="Cut a person, mannequin, garment or flat-lay out of its background. The AI method handles shadows, gradients and busy scenes. Plain background is an instant, in-browser option for clean studio backdrops."
+      accept=".png,.jpg,.jpeg,.webp,image/*" exts={IMG_EXT} multiple actionLabel="Remove background" emptyHint="PNG, JPG or WebP up to 15 MB. Photos are deleted from the server right after processing."
       options={{
-        initial: { tolerance: 30, feather: 1, out: 'png', color: '#FFFFFF', pick: 'auto', key: '#FFFFFF' },
+        initial: { mode: 'ai', edges: 'balanced', tolerance: 30, feather: 1, out: 'png', color: '#FFFFFF' },
         render: (o, set) => (<>
-          <Slider label="Tolerance" value={o.tolerance} min={5} max={80} onChange={(tolerance) => set({ tolerance })} show={(v) => (v < 20 ? 'Strict' : v < 45 ? 'Balanced' : 'Loose')} />
-          <Slider label="Edge softness" value={o.feather} min={0} max={4} onChange={(feather) => set({ feather })} show={(v) => `${v}px`} />
-          <Choice label="Background colour" value={o.pick} onChange={(pick) => set({ pick })} options={[['auto', 'Detect automatically'], ['custom', 'Choose a colour']]} />
-          {o.pick === 'custom' && <label className="cv-field"><span>Remove this colour</span><input type="color" value={o.key} onChange={(e) => set({ key: e.target.value })} /></label>}
+          <Choice label="Method" value={o.mode} onChange={(mode) => set({ mode })} options={[['ai', 'AI (best for photos)'], ['plain', 'Plain background (instant)']]} />
+          {o.mode === 'ai'
+            ? <Choice label="Edges" value={o.edges} onChange={(edges) => set({ edges })} options={[['soft', 'Soft (hair, lace, fringe)'], ['balanced', 'Balanced'], ['crisp', 'Crisp (hard-edged products)']]} />
+            : <>
+              <Slider label="Tolerance" value={o.tolerance} min={5} max={80} onChange={(tolerance) => set({ tolerance })} show={(v) => (v < 20 ? 'Strict' : v < 45 ? 'Balanced' : 'Loose')} />
+              <Slider label="Edge softness" value={o.feather} min={0} max={4} onChange={(feather) => set({ feather })} show={(v) => `${v}px`} />
+            </>}
           <Choice label="Save as" value={o.out} onChange={(out) => set({ out })} options={[['png', 'PNG, transparent'], ['webp', 'WebP, transparent'], ['jpg', 'JPG, solid colour']]} />
           {o.out === 'jpg' && <label className="cv-field"><span>Fill colour</span><input type="color" value={o.color} onChange={(e) => set({ color: e.target.value })} /></label>}
         </>),
@@ -327,14 +330,21 @@ function RemoveBackground() {
       process={async (files, o) => {
         const out = [];
         for (const f of files) {
-          const { canvas, w, h } = await rasterise(f, { width: 2400 });
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          const img = ctx.getImageData(0, 0, w, h);
-          removeBackground(img, { tolerance: o.tolerance, feather: o.feather, bg: o.pick === 'custom' ? hexToRgb(o.key) : null });
-          ctx.putImageData(img, 0, 0);
+          let canvas; let w; let h;
+          if (o.mode === 'ai') {
+            const fd = new FormData(); fd.append('image', f); fd.append('edges', o.edges);
+            const cut = await postForBlob('/api/convert/remove-background', fd);
+            ({ canvas, w, h } = await rasterise(cut, {}));
+          } else {
+            ({ canvas, w, h } = await rasterise(f, { width: 2400 }));
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            const img = ctx.getImageData(0, 0, w, h);
+            removeBackground(img, { tolerance: o.tolerance, feather: o.feather });
+            ctx.putImageData(img, 0, 0);
+          }
           let target = canvas;
           if (o.out === 'jpg') { target = document.createElement('canvas'); target.width = w; target.height = h; const t = target.getContext('2d'); t.fillStyle = o.color; t.fillRect(0, 0, w, h); t.drawImage(canvas, 0, 0); }
-          const blob = await canvasBlob(target, MIME[o.out], 0.95);
+          const blob = o.mode === 'ai' && o.out === 'png' ? await canvasBlob(canvas, 'image/png') : await canvasBlob(target, MIME[o.out], 0.95);
           out.push({ blob, name: `${baseName(f.name)}-cutout.${o.out}`, inSize: f.size, dims: `${w} × ${h}px` });
         }
         return out;

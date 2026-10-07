@@ -104,6 +104,23 @@ export async function fetchBlob(path) {
   return res.blob();
 }
 
+/** POST a form (file upload) to a protected endpoint that answers with a file, and return the file as a Blob. */
+export async function postForBlob(path, formData) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  let res;
+  try {
+    res = await fetch(`${API}${path}`, { method: 'POST', body: formData, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new Error('Could not reach the FabricNow API. Check your connection and try again.');
+  }
+  if (!res.ok) {
+    let msg = 'The request failed.';
+    try { msg = (await res.json()).error || msg; } catch { /* not JSON */ }
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
 export async function downloadFile(path, filename) {
   const blob = await fetchBlob(path);
   const url = URL.createObjectURL(blob);
