@@ -64,3 +64,11 @@
   .cv-tool-head{flex-direction:column}
 }
 @media (prefers-reduced-motion:reduce){.cv-main{animation:none}}
+
+.cv-palette{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:20px;align-items:start}
+.cv-palette-img{width:100%;border-radius:18px;border:1px solid var(--line);object-fit:cover;max-height:300px}
+.cv-swatches{display:grid;gap:10px}
+.cv-chip{display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;border:1px solid var(--line);border-radius:16px}
+.cv-chip>div{flex:1;min-width:0}.cv-chip strong{display:block;color:var(--text);font-size:.92rem}.cv-chip small{color:var(--muted);font-size:.76rem}
+.cv-chip-sw{flex:none;width:46px;height:46px;border-radius:12px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14)}
+@media (max-width:700px){.cv-palette{grid-template-columns:1fr}}

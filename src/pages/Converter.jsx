@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeftRight, Check, Copy, Download, FileImage, FileText, Image as ImageIcon, Palette, Ruler, Scale, Scissors, Shirt, Spline, Upload, X } from 'lucide-react';
+import { ArrowLeftRight, Check, Copy, Download, Eraser, FileImage, FileText, Image as ImageIcon, PenTool, Palette, Pipette, Ruler, Scale, Scissors, Shirt, Smartphone, Spline, Upload, X } from 'lucide-react';
 import { api } from '../api.js';
 import {
   LENGTH, WEIGHT, MEN, WOMEN, baseName, buildPdf, canvasBlob, cmykToRgb, convert, fmtBytes, fmtNum, hexToRgb, hslToRgb,
   normaliseSvg, rasterise, rgbToCmyk, rgbToHex, rgbToHsl, svgSize, toFraction, weightClass,
+  colourHandoff, dxfToSvg, extractPalette, removeBackground,
 } from '../convert.js';
+import PendingButton from '../components/PendingButton.jsx';
 
 /* ---------- small shared pieces ---------- */
 function useCopy() {
@@ -275,6 +277,163 @@ function ImageToPdf() {
   );
 }
 
+
+function HeicToJpg() {
+  return (
+    <FileTool
+      title="HEIC to JPG" badge="Runs in your browser"
+      body="iPhone photos are saved as HEIC, which many websites, stores and design tools reject. Convert them to JPG or PNG without losing the picture."
+      accept=".heic,.heif,image/heic,image/heif" exts={/\.(heic|heif)$/i} multiple actionLabel="Convert photos" emptyHint="HEIC or HEIF files from an iPhone or iPad. Nothing is uploaded."
+      options={{
+        initial: { fmt: 'jpg', quality: 90 },
+        render: (o, set) => (<>
+          <Choice label="Convert to" value={o.fmt} onChange={(fmt) => set({ fmt })} options={[['jpg', 'JPG'], ['png', 'PNG']]} />
+          {o.fmt === 'jpg' && <Slider label="Quality" value={o.quality} min={50} max={100} onChange={(quality) => set({ quality })} show={(v) => `${v}%`} />}
+        </>),
+      }}
+      process={async (files, o) => {
+        const { default: heic2any } = await import('heic2any');
+        const out = [];
+        for (const f of files) {
+          let res;
+          try { res = await heic2any({ blob: f, toType: MIME[o.fmt], quality: o.quality / 100 }); }
+          catch { throw new Error(`${f.name} could not be read. It may be damaged or not a HEIC photo.`); }
+          const blob = Array.isArray(res) ? res[0] : res;
+          out.push({ blob, name: `${baseName(f.name)}.${o.fmt}`, inSize: f.size });
+        }
+        return out;
+      }}
+    />
+  );
+}
+
+function RemoveBackground() {
+  return (
+    <FileTool
+      title="Remove background" badge="Runs in your browser"
+      body="Cut a garment or fabric out of a plain studio or wall background. It removes the colour that touches the photo's edge, so white prints inside the garment stay."
+      accept=".png,.jpg,.jpeg,.webp,image/*" exts={IMG_EXT} multiple actionLabel="Remove background" emptyHint="Works best on an even, plain background. Busy backgrounds will not cut out cleanly."
+      options={{
+        initial: { tolerance: 30, feather: 1, out: 'png', color: '#FFFFFF', pick: 'auto', key: '#FFFFFF' },
+        render: (o, set) => (<>
+          <Slider label="Tolerance" value={o.tolerance} min={5} max={80} onChange={(tolerance) => set({ tolerance })} show={(v) => (v < 20 ? 'Strict' : v < 45 ? 'Balanced' : 'Loose')} />
+          <Slider label="Edge softness" value={o.feather} min={0} max={4} onChange={(feather) => set({ feather })} show={(v) => `${v}px`} />
+          <Choice label="Background colour" value={o.pick} onChange={(pick) => set({ pick })} options={[['auto', 'Detect automatically'], ['custom', 'Choose a colour']]} />
+          {o.pick === 'custom' && <label className="cv-field"><span>Remove this colour</span><input type="color" value={o.key} onChange={(e) => set({ key: e.target.value })} /></label>}
+          <Choice label="Save as" value={o.out} onChange={(out) => set({ out })} options={[['png', 'PNG, transparent'], ['webp', 'WebP, transparent'], ['jpg', 'JPG, solid colour']]} />
+          {o.out === 'jpg' && <label className="cv-field"><span>Fill colour</span><input type="color" value={o.color} onChange={(e) => set({ color: e.target.value })} /></label>}
+        </>),
+      }}
+      process={async (files, o) => {
+        const out = [];
+        for (const f of files) {
+          const { canvas, w, h } = await rasterise(f, { width: 2400 });
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          const img = ctx.getImageData(0, 0, w, h);
+          removeBackground(img, { tolerance: o.tolerance, feather: o.feather, bg: o.pick === 'custom' ? hexToRgb(o.key) : null });
+          ctx.putImageData(img, 0, 0);
+          let target = canvas;
+          if (o.out === 'jpg') { target = document.createElement('canvas'); target.width = w; target.height = h; const t = target.getContext('2d'); t.fillStyle = o.color; t.fillRect(0, 0, w, h); t.drawImage(canvas, 0, 0); }
+          const blob = await canvasBlob(target, MIME[o.out], 0.95);
+          out.push({ blob, name: `${baseName(f.name)}-cutout.${o.out}`, inSize: f.size, dims: `${w} × ${h}px` });
+        }
+        return out;
+      }}
+    />
+  );
+}
+
+function DxfToSvg() {
+  return (
+    <FileTool
+      title="DXF to SVG" badge="Runs in your browser"
+      body="Open pattern and cutting files from Optitex, Gerber, CLO or CAD as an SVG you can edit, print or place in a design. Layers, arcs, curves, notches and labels are kept."
+      accept=".dxf" exts={/\.dxf$/i} multiple={false} actionLabel="Convert to SVG" emptyHint="ASCII DXF files. In your CAD program choose Save as, then ASCII DXF."
+      options={{
+        initial: { unit: 'auto', stroke: '#111111', text: true },
+        render: (o, set) => (<>
+          <Choice label="Drawing units" value={o.unit} onChange={(unit) => set({ unit })} options={[['auto', 'Read from the file'], ['mm', 'Millimetres'], ['cm', 'Centimetres'], ['in', 'Inches']]} />
+          <label className="cv-field"><span>Line colour</span><input type="color" value={o.stroke} onChange={(e) => set({ stroke: e.target.value })} /></label>
+          <Choice label="Labels" value={o.text ? 'yes' : 'no'} onChange={(v) => set({ text: v === 'yes' })} options={[['yes', 'Keep text labels'], ['no', 'Lines only']]} />
+        </>),
+      }}
+      process={async (files, o) => {
+        const f = files[0]; const text = await f.text();
+        if (/^\s*0\s*\r?\nSECTION/.test(text) === false && !/SECTION/.test(text.slice(0, 400))) throw new Error('This does not look like an ASCII DXF file. Binary DXF files are not supported.');
+        const { svg, stats } = dxfToSvg(text, { unit: o.unit, stroke: o.stroke, showText: o.text });
+        const size = stats.widthMm ? `${stats.widthMm} × ${stats.heightMm} mm` : 'size unknown';
+        const skipped = Object.keys(stats.skipped).length ? `, skipped ${Object.entries(stats.skipped).map(([k, v]) => `${v} ${k}`).join(', ')}` : '';
+        return [{ blob: new Blob([svg], { type: 'image/svg+xml' }), name: `${baseName(f.name)}.svg`, inSize: f.size, text: svg, note: `${stats.paths} shapes, ${stats.layers} layer${stats.layers === 1 ? '' : 's'}, ${size}${skipped}` }];
+      }}
+    />
+  );
+}
+
+/* ---------- palette from a photo ---------- */
+function PaletteTool({ goTool }) {
+  const [file, setFile] = useState(null); const [url, setUrl] = useState(''); const [colours, setColours] = useState([]);
+  const [count, setCount] = useState(6); const [skipBg, setSkipBg] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const [drag, setDrag] = useState(false); const [done, copy] = useCopy(); const input = useRef(null);
+  useEffect(() => { if (!file) { setUrl(''); return undefined; } const u = URL.createObjectURL(file); setUrl(u); return () => URL.revokeObjectURL(u); }, [file]);
+
+  const take = (list) => { const f = Array.from(list || []).find((x) => IMG_EXT.test(x.name) || x.type.startsWith('image/')); if (!f) { setError('Choose a PNG, JPG or WebP photo.'); return; } setError(''); setColours([]); setFile(f); };
+  const run = async () => {
+    setBusy(true); setError('');
+    try {
+      const { canvas, w, h } = await rasterise(file, { width: 600 });
+      const img = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h);
+      if (skipBg) removeBackground(img, { tolerance: 30, feather: 0 });
+      const list = extractPalette(img, count);
+      if (!list.length) throw new Error('No colours found. Try again with "Skip the plain background" turned off.');
+      setColours(list);
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+  const card = async () => {
+    const c = document.createElement('canvas'); const n = colours.length; c.width = 160 * n; c.height = 220; const x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    colours.forEach((k, i) => { x.fillStyle = k.hex; x.fillRect(i * 160, 0, 160, 170); x.fillStyle = '#1D1A33'; x.font = '700 18px Manrope, system-ui, sans-serif'; x.textAlign = 'center'; x.fillText(k.hex, i * 160 + 80, 200); });
+    download(await canvasBlob(c, 'image/png'), `${baseName(file.name)}-palette.png`);
+  };
+  const open = (hex) => { colourHandoff.hex = hex; goTool('colour'); };
+
+  return (
+    <div className="cv-tool">
+      <ToolHead title="Palette from a photo" body="Pull the main colours out of a fabric, garment or inspiration photo. Send any colour to the Colour tool to get its RGB, HSL and CMYK values." badge="Runs in your browser" />
+      <div className={`cv-drop ${drag ? 'drag' : ''} ${file ? 'has' : ''}`} role="button" tabIndex={0} onClick={() => input.current?.click()}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.current?.click(); } }}
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={(e) => { e.preventDefault(); setDrag(false); take(e.dataTransfer.files); }}>
+        <span className="cv-drop-ico"><Upload size={20} /></span>
+        <div><strong>{file ? file.name : 'Drop a photo here, or browse'}</strong><small>{file ? fmtBytes(file.size) : 'PNG, JPG or WebP. Nothing is uploaded.'}</small></div>
+        <input ref={input} type="file" hidden accept="image/*" onChange={(e) => { take(e.target.files); e.target.value = ''; }} />
+      </div>
+      <div className="cv-opts">
+        <Slider label="Colours" value={count} min={3} max={10} onChange={setCount} />
+        <Choice label="Plain background" value={skipBg ? 'skip' : 'keep'} onChange={(v) => setSkipBg(v === 'skip')} options={[['skip', 'Skip it'], ['keep', 'Include it']]} />
+      </div>
+      {error && <div className="error" role="alert">{error}</div>}
+      <div className="cv-actions"><PendingButton busy={busy} icon={Pipette} disabled={!file} onClick={run}>Pull palette</PendingButton></div>
+      {colours.length > 0 && (
+        <div className="cv-palette">
+          {url && <img src={url} alt="" className="cv-palette-img" />}
+          <div className="cv-swatches">
+            {colours.map((k) => (
+              <div className="cv-chip" key={k.hex}>
+                <button className="cv-chip-sw" style={{ background: k.hex }} data-no-spin onClick={() => copy(k.hex)} aria-label={`Copy ${k.hex}`} />
+                <div><strong className="mono">{k.hex}</strong><small>{k.pct}% of the photo</small></div>
+                <button className="btn btn-ghost btn-sm" data-no-spin onClick={() => open(k.hex)}><Pipette size={14} /> Open in Colour</button>
+              </div>
+            ))}
+            <div className="cv-result-actions">
+              <button className="btn btn-ghost btn-sm" data-no-spin onClick={() => copy(colours.map((k) => k.hex).join(', '), 'all')}>{done === 'all' ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy all</>}</button>
+              <button className="btn btn-ghost btn-sm" data-no-spin onClick={card}><Download size={14} /> Palette card</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------- unit tools ---------- */
 function Outputs({ rows, copyKey }) {
   const [done, copy] = useCopy();
@@ -354,7 +513,7 @@ function WeightTool() {
 
 /* ---------- colour ---------- */
 function ColourTool() {
-  const [rgb, setRgb] = useState({ r: 230, g: 98, b: 57 });
+  const [rgb, setRgb] = useState(() => { const c = colourHandoff.hex && hexToRgb(colourHandoff.hex); colourHandoff.hex = null; return c || { r: 230, g: 98, b: 57 }; });
   const [done, copy] = useCopy();
   const hsl = rgbToHsl(rgb); const cmyk = rgbToCmyk(rgb); const hex = rgbToHex(rgb);
   const clamp = (v, max) => Math.max(0, Math.min(max, Math.round(parseFloat(v) || 0)));
@@ -431,6 +590,9 @@ const SECTIONS = {
     { id: 'svg-png', label: 'SVG to PNG', sub: 'Also JPG, WebP', icon: ImageIcon, C: SvgToPng },
     { id: 'formats', label: 'Formats and sizes', sub: 'PNG, JPG, WebP, resize', icon: FileImage, C: ImageFormats },
     { id: 'pdf', label: 'Images to PDF', sub: 'Lookbooks, line sheets', icon: FileText, C: ImageToPdf },
+    { id: 'bg', label: 'Remove background', sub: 'Cut-outs for listings', icon: Eraser, C: RemoveBackground },
+    { id: 'heic', label: 'HEIC to JPG', sub: 'iPhone photos', icon: Smartphone, C: HeicToJpg },
+    { id: 'dxf', label: 'DXF to SVG', sub: 'Pattern and CAD files', icon: PenTool, C: DxfToSvg },
   ] },
   units: { tools: [
     { id: 'length', label: 'Measurements', sub: 'cm, in, yd, ft, m', icon: Ruler, C: LengthTool },
@@ -438,6 +600,7 @@ const SECTIONS = {
     { id: 'weight', label: 'Fabric weight', sub: 'GSM, oz/yd², momme', icon: Scale, C: WeightTool },
   ] },
   style: { tools: [
+    { id: 'palette', label: 'Palette from photo', sub: 'Colours from any image', icon: Pipette, C: PaletteTool },
     { id: 'colour', label: 'Colour', sub: 'HEX, RGB, HSL, CMYK', icon: Palette, C: ColourTool },
     { id: 'sizes', label: 'Clothing sizes', sub: 'US, UK, EU, IT, FR', icon: Shirt, C: SizeTool },
   ] },
@@ -459,7 +622,7 @@ export default function Converter({ section = 'image' }) {
           </button>
         ))}
       </nav>
-      <section className="cv-main" key={active.id}><Active /></section>
+      <section className="cv-main" key={active.id}><Active goTool={setId} /></section>
     </div>
   );
 }
