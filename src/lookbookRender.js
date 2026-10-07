@@ -5,7 +5,7 @@ export const THEMES = {
   terracotta: { bg: '#2B1A15', card: '#38231C', text: '#FBEFE8', muted: '#D2B3A6', line: '#52352B', accent: '#F4A07C', name: 'Terracotta' },
 };
 export const LAYOUTS = { one: { per: 1, name: 'One design per page' }, two: { per: 2, name: 'Two per page' }, grid: { per: 4, name: 'Four per page (grid)' } };
-export const CURRENCIES = ['GHS', 'NGN', 'USD', 'EUR', 'GBP', 'XOF', 'KES', 'ZAR', 'CAD'];
+export const CURRENCIES = ['USD', 'GHS', 'NGN', 'EUR', 'GBP', 'XOF', 'KES', 'ZAR', 'CAD'];
 export const PAGE_W = 1240; export const PAGE_H = 1754;
 const FONT = "'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif";
 

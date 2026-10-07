@@ -31,7 +31,7 @@ const download = (blob, name) => { const u = URL.createObjectURL(blob); const a 
 export default function Lookbook() {
   const toast = useToast();
   const [items, setItems] = useState([]);
-  const [s, setS] = useState({ title: 'Harmattan Collection', brand: '', subtitle: '', currency: 'GHS', theme: 'light', layout: 'one' });
+  const [s, setS] = useState({ title: 'Harmattan Collection', brand: '', subtitle: '', currency: 'USD', theme: 'light', layout: 'one' });
   const [pages, setPages] = useState([]);
   const [picker, setPicker] = useState(false); const [projects, setProjects] = useState(null); const [q, setQ] = useState('');
   const [busyPdf, setBusyPdf] = useState(false); const [busyShare, setBusyShare] = useState(false); const [busyAdd, setBusyAdd] = useState(false);
