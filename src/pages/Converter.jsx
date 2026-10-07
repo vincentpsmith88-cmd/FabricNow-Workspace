@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftRight, Check, Copy, Download, Eraser, FileImage, FileText, Image as ImageIcon, PenTool, Palette, Pipette, Ruler, Scale, Scissors, Shirt, Smartphone, Spline, Upload, X } from 'lucide-react';
-import { api, postForBlob } from '../api.js';
+import { api, isSubscriptionInactive, postForBlob, requestUpgrade } from '../api.js';
 import {
   LENGTH, WEIGHT, MEN, WOMEN, baseName, buildPdf, canvasBlob, cmykToRgb, convert, fmtBytes, fmtNum, hexToRgb, hslToRgb,
   normaliseSvg, rasterise, rgbToCmyk, rgbToHex, rgbToHsl, svgSize, toFraction, weightClass,
@@ -91,6 +91,7 @@ function FileTool({ title, body, badge, accept, exts, multiple, actionLabel, opt
     setFiles((cur) => (multiple ? [...cur, ...ok] : ok.slice(0, 1)));
   };
   const run = async () => {
+    if (isSubscriptionInactive()) { requestUpgrade('converter'); return; }
     setBusy(true); setError(''); setResults([]);
     try {
       const out = await process(files, opts);

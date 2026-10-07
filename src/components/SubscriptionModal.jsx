@@ -16,6 +16,7 @@ const KINDS = {
   fabric: { head: 'Turn any fabric photo into a swatch', t: 'Ankara swatch · repeat tile', s: 'Colours, motif and weave detected', now: 'Fabric AI', inc: 'Included' },
   library: { head: 'Generate designs for your pattern library', t: 'Kaftan · 6 variations', s: 'Ready to edit and save', now: 'Library AI', inc: 'Included' },
   assistant: { head: 'Ask the FabricNow assistant anything', t: 'How much fabric for a boubou?', s: 'Answers using your projects', now: 'Assistant', inc: 'Included' },
+  converter: { head: 'Unlock image and vector tools', t: 'Image · vector · PDF', s: 'Generate and convert creative files', now: 'Image & vector tools', inc: 'Included' },
 };
 
 const ROWS = [
@@ -28,6 +29,9 @@ const ROWS = [
 
 export default function SubscriptionModal({ open, detail, onClose }) {
   const K = KINDS[detail?.kind] || KINDS.pattern;
+  const rows = detail?.kind === 'converter'
+    ? [[K.now, 'Locked', K.inc], ['Image and vector conversions', 'Locked', 'Included'], ['Processed images', '—', `${PLAN.included} / month`]]
+    : [[K.now, 'Locked', K.inc], ...ROWS.slice(1)];
   const toast = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -85,7 +89,7 @@ export default function SubscriptionModal({ open, detail, onClose }) {
           <table className="sub-table">
             <thead><tr><th /><th>Now</th><th className="on">{PLAN.name}</th></tr></thead>
             <tbody>
-              {[[K.now, 'Locked', K.inc], ...ROWS.slice(1)].map(([a, b, c]) => <tr key={a}><td>{a}</td><td>{b}</td><td className="on">{c}</td></tr>)}
+              {rows.map(([a, b, c]) => <tr key={a}><td>{a}</td><td>{b}</td><td className="on">{c}</td></tr>)}
             </tbody>
           </table>
         </aside>

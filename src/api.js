@@ -10,6 +10,7 @@ export const COMPANY_KEY = 'fabricnow_company_id';
 // null = not known yet (the server decides), true/false once /api/billing/api-status has answered.
 let subscribed = null;
 export const setSubscribed = (v) => { subscribed = v; };
+export const isSubscriptionInactive = () => subscribed === false;
 export const UPGRADE_MSG = 'Choose a plan to use this feature.';
 export const isUpgradeMessage = (m) => m === UPGRADE_MSG || /active api (plan|subscription)|upgrade to unlock|api plan is required/i.test(String(m || ''));
 
