@@ -1,4 +1,4 @@
-import { LayoutDashboard, Box, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Users, Bot, Shirt, Ruler, FileText, Kanban, ShieldCheck, Database, Search, Image as ImageIcon, LayoutGrid, Library, ArrowLeftRight, Ruler as RulerIcon, Palette as PaletteIcon, Spline, Store } from 'lucide-react';
+import { LayoutDashboard, Box, Scissors, FolderKanban, BarChart3, KeyRound, Activity, CreditCard, Building2, Settings, HelpCircle, Palette, Images, Factory, BookOpen, Sparkles, FolderOpen, Users, Bot, Shirt, Ruler, FileText, Kanban, ShieldCheck, Database, Search, Image as ImageIcon, LayoutGrid, Library, ArrowLeftRight, Ruler as RulerIcon, Palette as PaletteIcon, Spline, Store, Code2, BookMarked } from 'lucide-react';
 
 const fashionItems = [
   { id:'fashion-command', label:'Command Center', icon:LayoutDashboard, sub:'Fashion production at a glance.' },
@@ -42,6 +42,8 @@ export const NAV_GROUPS = [
     {id:'convert-style',label:'Colour & sizes',icon:PaletteIcon,sub:'HEX, RGB, HSL and CMYK, plus US, UK, EU, IT and FR clothing sizes.'},
   ]},
   { label:'Developers', items:[
+    {id:'api-docs',label:'API Documentation',icon:BookMarked,sub:'Complete API workflow, system design and endpoint guide.'},
+    {id:'api-playground',label:'API Playground',icon:Code2,sub:'Test fabric, patterns, tailoring and fashion APIs live.'},
     {id:'keys',label:'API Keys',icon:KeyRound,sub:'Server-side credentials for your integration.'},
     {id:'usage',label:'Usage',icon:Activity,sub:'Processed images against your monthly allowance.'},
     {id:'analytics',label:'Analytics',icon:BarChart3,sub:'What your team is making.'},
