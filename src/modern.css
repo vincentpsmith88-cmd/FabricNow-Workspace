@@ -542,7 +542,7 @@ body{background:#FFFFFF}
 .inspiration-library-skeleton{display:grid;gap:10px}.inspiration-library-skeleton>.pin-grid{margin-top:12px}
 
 /* Pinterest mark + Inspiration Library empty state */
-.pinterest-p{width:40px;height:40px;border-radius:50%;background:#E60023;color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.15rem;flex:none}
+.pinterest-p{width:40px;height:40px;border-radius:50%;background:#E60023;color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.15rem;flex:none}.pinterest-brand-mark{object-fit:contain;display:block;flex:none}
 .lib-empty{position:relative;border:1px dashed #D9DCE6;border-radius:24px;background:linear-gradient(180deg,#FCFBFA 0%,#fff 100%);padding:28px 24px 44px;overflow:hidden}
 .lib-empty-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;-webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 92%);mask-image:linear-gradient(180deg,#000 0%,transparent 92%)}
 .lib-empty-tile{aspect-ratio:4/5;border-radius:16px;border:1px dashed #D9DCE6;background:#F5F4F8;display:grid;place-items:center;color:#B9BDCB}
