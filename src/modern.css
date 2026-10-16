@@ -67,7 +67,7 @@ h1,h2,h3{letter-spacing:-.022em}
   border:2.2px solid currentColor;border-right-color:transparent;
   animation:fnspin .7s linear infinite;
 }
-.btn.is-pending:has(.spin)::before{display:none}
+.btn.is-pending:has(.spin,.ui-spinner)::before{display:none}
 button.is-pending:not(.btn){position:relative}
 button.is-pending:not(.btn)::after{
   content:"";position:absolute;inset:0;margin:auto;width:16px;height:16px;border-radius:50%;
