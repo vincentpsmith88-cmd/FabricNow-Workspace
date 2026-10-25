@@ -20,6 +20,7 @@ const GENERATORS = [
   [/^\/api\/workspace\/(patterns|tools|jobs\/[^/]+\/grade)/, 'pattern'],
   [/^\/api\/workspace-suite\/fabrics\/ai-/, 'fabric'],
   [/^\/api\/pattern-library\/ai/, 'library'],
+  [/^\/api\/body-measurements\/scans/, 'measurement'],
   [/^\/api\/assistant\//, 'assistant'],
 ];
 const kindOf = (path) => { const p = String(path).split('?')[0]; const hit = GENERATORS.find(([re]) => re.test(p)); return hit ? hit[1] : null; };

@@ -26,6 +26,7 @@ export const NAV_GROUPS = [
     {id:'studio',label:'Pattern Studio',icon:Scissors,sub:'Turn a garment photo into pattern assets.'},
     {id:'pattern-library',label:'Pattern Library',icon:Library,sub:'Flat sketches you can duplicate, or describe and let AI draw.'},
     {id:'tailor-tools',label:'Tailor Tools',icon:Scissors,sub:'Draw seams, measurements, darts, grainlines and stitch plans with AI guidance.'},
+    {id:'body-measurements',label:'AI Body Measurements',icon:Ruler,sub:'Capture multi-angle body photos, review measurements and prepare fitting profiles.'},
     {id:'fit-models',label:'3D Fit Models',icon:Box,sub:'Rotate, light and size every fitting body.'},
     {id:'lab',label:'Design Lab',icon:Palette,sub:'Prints, colourways, flats, mockups, aso-ebi styles and listings.'},
     {id:'projects',label:'Projects',icon:FolderKanban,sub:'Every pattern job your team has run.'},

@@ -1,0 +1,166 @@
+FabricNow Garment Extractor Integration
+=======================================
+
+Purpose
+-------
+This guide describes how a server-side application can submit a garment image to
+FabricNow and receive extracted garment data. It covers the Garment Parts
+endpoint and the separate Pattern Extraction job endpoint. They are related
+workflows, but they do not have the same response contract.
+
+Base URL
+--------
+Use the API base URL supplied for your FabricNow deployment. The workspace
+frontend reads this from VITE_API_URL (default: http://localhost:4000). Do not
+assume the public marketing/site URL is also the API host.
+
+Authentication and API keys
+---------------------------
+1. In FabricNow, create an API key from Developers > API Keys. The workspace
+   displays the secret only once. Store it in a server-side secret manager.
+2. Never place the key in browser JavaScript, a mobile app bundle, source
+   control, or a URL. Your application server should make the FabricNow request.
+3. The documented request authentication format is an Authorization bearer
+   credential:
+
+       Authorization: Bearer <CREDENTIAL>
+
+   The workspace's signed-in API calls use a bearer access token. The API key
+   screen creates API keys, but the backend authentication middleware is not
+   included in this integration reference. Confirm with the FabricNow API
+   operator that API keys are accepted as bearer credentials on the target
+   endpoint before deploying. If they are not, the operator must enable API-key
+   authentication or provide the approved server-to-server token flow.
+4. If your key is scoped to a company, send the company identifier in:
+
+       X-Company-ID: <COMPANY_ID>
+
+   The workspace sends this header when a company is selected. Confirm whether
+   it is required for your API-key account.
+
+Garment Parts / Garment Extractor
+---------------------------------
+Endpoint listed in FabricNow Developer Documentation and API Playground:
+
+    POST /api/garment-tool/process
+    Content-Type: multipart/form-data
+
+The Playground uploads one image using the multipart field name "file". Its
+file picker accepts PNG, JPEG, and WebP. The endpoint is described as extracting
+the garment and returning the garment package/parts. The route implementation
+is not included in this workspace, so additional form fields, upload limits,
+processing time, response schema, and whether the response is JSON or a file
+must be confirmed against the deployed API or its operator.
+
+Example request:
+
+    curl --fail-with-body -X POST "$FABRICNOW_API_URL/api/garment-tool/process" \
+      -H "Authorization: Bearer $FABRICNOW_API_KEY" \
+      -H "X-Company-ID: $FABRICNOW_COMPANY_ID" \
+      -F "file=@./garment.jpg;type=image/jpeg"
+
+Omit X-Company-ID only if the API operator confirms it is unnecessary. Do not
+set Content-Type manually for multipart requests; curl must add the boundary.
+
+Example server-side JavaScript (Node.js 18+):
+
+    import { readFile } from 'node:fs/promises';
+
+    const image = await readFile('./garment.jpg');
+    const form = new FormData();
+    form.append('file', new Blob([image], { type: 'image/jpeg' }), 'garment.jpg');
+
+    const response = await fetch(
+      `${process.env.FABRICNOW_API_URL}/api/garment-tool/process`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.FABRICNOW_API_KEY}`,
+          'X-Company-ID': process.env.FABRICNOW_COMPANY_ID,
+        },
+        body: form,
+      },
+    );
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(`FabricNow returned ${response.status}: ${message}`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const result = contentType.includes('application/json')
+      ? await response.json()
+      : Buffer.from(await response.arrayBuffer());
+
+Handle JSON as structured output; for a non-JSON response, preserve the bytes
+and inspect Content-Type and Content-Disposition to determine the package format.
+The exact success response shape must be obtained from the deployed endpoint.
+
+Pattern Extraction (asynchronous job)
+--------------------------------------
+For the workspace's pattern-generation workflow, the implemented route is:
+
+    POST /api/workspace/patterns
+    Content-Type: multipart/form-data
+
+Required multipart field:
+    file       Garment image (JPG, PNG, or WebP; max 10 MB)
+
+Optional multipart fields:
+    swatch       Fabric image (same accepted image types and size limit)
+    garment      Garment type or "auto"
+    notes        Designer instructions
+    lining       Lining details
+    model_gender Model gender
+    model_size   Base size
+    fit_system   Fit system
+
+Example:
+
+    curl --fail-with-body -X POST "$FABRICNOW_API_URL/api/workspace/patterns" \
+      -H "Authorization: Bearer $FABRICNOW_API_KEY" \
+      -H "X-Company-ID: $FABRICNOW_COMPANY_ID" \
+      -F "file=@./garment.jpg;type=image/jpeg" \
+      -F "garment=auto" \
+      -F "notes=Keep the construction suitable for lightweight cotton"
+
+This route starts a pattern job and returns a job object (normalized to include
+kind and createdAt when available). Use the returned job id with:
+
+    GET    /api/workspace/jobs/<JOB_ID>
+    GET    /api/workspace/jobs
+    GET    /api/workspace/jobs/<JOB_ID>/export.zip
+    DELETE /api/workspace/jobs/<JOB_ID>
+
+The single-job, job-list, download, and delete routes also require
+authentication. File links are under /api/workspace/jobs/<JOB_ID>/files/....
+The deployed API may expose more job fields; treat the server response as the
+source of truth.
+
+Batch pattern jobs
+------------------
+To submit up to 10 images, POST to /api/workspace/patterns/batch with repeated
+"files" fields and optional "garment", "notes", and "lining" fields. Each image
+creates its own job. Each image is limited to 10 MB and must be JPG, PNG, or
+WebP.
+
+Access requirements and errors
+------------------------------
+- Pattern generation checks for an active API subscription. Without one, the
+  route returns HTTP 402 with code API_SUBSCRIPTION_REQUIRED.
+- Missing required image: HTTP 400 with an error message.
+- Invalid image type or oversized upload: request rejected by upload validation.
+- Authentication failures depend on the deployed auth middleware; verify API-key
+  support before relying on bearer API keys.
+- Network and server errors should be handled without assuming every response
+  body is JSON.
+
+Before production
+-----------------
+1. Confirm the API base URL and whether the extractor route is enabled.
+2. Confirm that API keys are accepted in the Authorization bearer header and
+   whether X-Company-ID is required.
+3. Confirm the Garment Parts endpoint's file limits, optional fields, response
+   schema/package format, and synchronous or asynchronous behavior.
+4. Test with a non-production key, then rotate/revoke it if it was exposed.
+5. Keep credentials on your application server and avoid logging request headers.
