@@ -4,6 +4,7 @@ import { api, PLAN, money } from '../api.js';
 import { getUsage } from '../usage.js';
 import { useToast } from '../toast.jsx';
 import EmptyPage from './EmptyPage.jsx';
+import PaymentMethods from '../components/PaymentMethods.jsx';
 
 export default function Billing({ apiStatus }) {
   const toast = useToast();
@@ -29,6 +30,7 @@ export default function Billing({ apiStatus }) {
   ];
 
   return (
+    <>
     <div className="cols grid-2 billing">
       <section className="panel plan-card">
         <div className="plan-top">
@@ -58,8 +60,10 @@ export default function Billing({ apiStatus }) {
           <div><dt>Plan</dt><dd>{PLAN.name}</dd></div>
           <div><dt>Monthly price</dt><dd>{money(PLAN.price)}</dd></div>
         </dl>
-        <p className="muted small-text">Payments, invoices and card details are handled in the Stripe billing portal, opened from Manage subscription.</p>
+        <p className="muted small-text">Add or change your cards below. Invoices and cancellation are handled in the Stripe billing portal, opened from Manage subscription.</p>
       </section>
     </div>
+    <div className="cols"><PaymentMethods /></div>
+    </>
   );
 }
