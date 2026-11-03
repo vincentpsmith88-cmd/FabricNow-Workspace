@@ -122,7 +122,7 @@ export default function Login({ onAuth }) {
           </form>
 
           <div className="lx-security"><ShieldCheck size={15} /><span>Access is permission-based — you only see workspaces you are authorized to open.</span></div>
-          <p className="lx-contact">Need access to a company? <a href="https://fabricnow.tonasel.com/contact?topic=api-enterprise" target="_blank" rel="noreferrer">Contact FabricNow</a></p>
+          <p className="lx-contact">Need access to a company? <a href="https://fabricnow.procontact?topic=api-enterprise" target="_blank" rel="noreferrer">Contact FabricNow</a></p>
         </div>
       </section>
     </main>

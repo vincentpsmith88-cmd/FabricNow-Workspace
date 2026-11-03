@@ -76,7 +76,7 @@ export async function api(path, opts = {}) {
   return data;
 }
 
-// Plan facts, as published at https://fabricnow.tonasel.com/developers
+// Plan facts, as published at https://fabricnow.prodevelopers
 export const PLAN = {
   name: 'API Growth',
   tier: 'growth',

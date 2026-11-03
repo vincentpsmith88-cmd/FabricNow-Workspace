@@ -2,7 +2,7 @@
 
 Workspace for companies on the **API Growth** plan: $2,900/month, 250 processed images included,
 $49/image overage with segmentation, $20/image for background removal only
-(matches https://fabricnow.tonasel.com/developers).
+(matches https://fabricnow.prodevelopers).
 
 ## Run
 ```bash
