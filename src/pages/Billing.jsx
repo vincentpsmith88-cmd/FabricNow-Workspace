@@ -4,7 +4,7 @@ import { api, PLAN, money } from '../api.js';
 import { getUsage } from '../usage.js';
 import { useToast } from '../toast.jsx';
 import EmptyPage from './EmptyPage.jsx';
-import PaymentMethods from '../components/PaymentMethods.jsx';
+import { openPaystackInline } from '../paystack.js';
 
 export default function Billing({ apiStatus }) {
   const toast = useToast();
@@ -16,8 +16,9 @@ export default function Billing({ apiStatus }) {
     setBusy(key);
     try {
       const d = await api(path, { method: 'POST', ...(body ? { body: JSON.stringify(body) } : {}) });
-      if (d.url) { window.location.href = d.url; return; }
-      toast.error('No redirect link came back from billing. Try again.');
+      if (d.access_code) { await openPaystackInline(d.access_code); return; }
+      if (d.canceled) { window.location.reload(); return; }
+      toast.error('Paystack did not return a checkout code. Try again.');
     } catch (e) { toast.error(e.message); }
     finally { setBusy(''); }
   };
@@ -43,8 +44,8 @@ export default function Billing({ apiStatus }) {
         <div className="price"><strong>{money(PLAN.price)}</strong><span>/ month</span></div>
         <ul className="checks">{features.map((f) => <li key={f}><Check size={16} />{f}</li>)}</ul>
         {active ? (
-          <button className="btn btn-ghost" disabled={busy === 'portal'} onClick={() => go('portal', '/api/billing/portal')}>
-            {busy === 'portal' ? 'Opening…' : 'Manage subscription'}
+          <button className="btn btn-ghost" disabled={busy === 'portal' || apiStatus.entitlement?.cancelAtPeriodEnd} onClick={() => go('portal', '/api/billing/cancel', { product: 'api' })}>
+            {busy === 'portal' ? 'Canceling…' : apiStatus.entitlement?.cancelAtPeriodEnd ? 'Renewal canceled' : 'Cancel subscription'}
           </button>
         ) : (
           <button className="btn btn-primary" disabled={busy === 'checkout'} onClick={() => go('checkout', '/api/billing/api-checkout', { tier: PLAN.tier })}>
@@ -60,10 +61,9 @@ export default function Billing({ apiStatus }) {
           <div><dt>Plan</dt><dd>{PLAN.name}</dd></div>
           <div><dt>Monthly price</dt><dd>{money(PLAN.price)}</dd></div>
         </dl>
-        <p className="muted small-text">Add or change your cards below. Invoices and cancellation are handled in the Stripe billing portal, opened from Manage subscription.</p>
+        <p className="muted small-text">Payments are processed securely by Paystack. FabricNow does not collect or store your card number or security code. You can cancel renewal here; access remains active through the paid period.</p>
       </section>
     </div>
-    <div className="cols"><PaymentMethods /></div>
     </>
   );
 }

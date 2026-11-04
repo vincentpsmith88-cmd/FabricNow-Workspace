@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Lock, X, Scissors, ShieldCheck, Infinity as Inf } from 'lucide-react';
 import { api, PLAN, money } from '../api.js';
+import { openPaystackInline } from '../paystack.js';
 import { useToast } from '../toast.jsx';
 
 const PIECES = [
@@ -50,8 +51,8 @@ export default function SubscriptionModal({ open, detail, onClose }) {
     setBusy(true);
     try {
       const d = await api('/api/billing/api-checkout', { method: 'POST', body: JSON.stringify({ tier: PLAN.tier }) });
-      if (d.url) { window.location.href = d.url; return; }
-      toast.error('No redirect link came back from billing. Try again.');
+      if (d.access_code) { await openPaystackInline(d.access_code); setBusy(false); return; }
+      toast.error('Paystack did not return a checkout code. Try again.');
     } catch (e) { toast.error(e.message); }
     setBusy(false);
   };
@@ -122,7 +123,7 @@ export default function SubscriptionModal({ open, detail, onClose }) {
           <button className={`sub-cta ${busy ? 'is-pending' : ''}`} onClick={subscribe} aria-busy={busy} data-no-spin autoFocus>
             {!busy && <Lock size={16} />}{`Subscribe for ${money(PLAN.price)}/mo`}
           </button>
-          <p className="sub-fine"><ShieldCheck size={14} />Payment is completed on Stripe. FabricNow never sees your card details.</p>
+          <p className="sub-fine"><ShieldCheck size={14} />Secure card entry and payment processing by Paystack. FabricNow never receives or stores your card number or CVC.</p>
           <button className="sub-later" onClick={onClose} data-no-spin>Not now</button>
         </div>
       </section>

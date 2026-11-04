@@ -11,7 +11,6 @@ import './workspace-pro.css';
 import './subscription.css';
 import './converter.css';
 import './sell.css';
-import './payments.css';
 import { installPendingButtons } from './pendingButtons.js';
 import { applyTheme, getTheme } from './theme.js';
 
