@@ -16,7 +16,11 @@ export default function Billing({ apiStatus }) {
     setBusy(key);
     try {
       const d = await api(path, { method: 'POST', ...(body ? { body: JSON.stringify(body) } : {}) });
-      if (d.access_code) { await openPaystackInline(d.access_code); return; }
+      const checkout = d.data || d;
+      if (checkout.access_code || checkout.authorization_url) {
+        await openPaystackInline(checkout.access_code, checkout.authorization_url, (error) => toast.error(error.message));
+        return;
+      }
       if (d.canceled) { window.location.reload(); return; }
       toast.error('Paystack did not return a checkout code. Try again.');
     } catch (e) { toast.error(e.message); }

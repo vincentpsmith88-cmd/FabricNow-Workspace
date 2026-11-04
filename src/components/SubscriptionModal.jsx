@@ -51,7 +51,12 @@ export default function SubscriptionModal({ open, detail, onClose }) {
     setBusy(true);
     try {
       const d = await api('/api/billing/api-checkout', { method: 'POST', body: JSON.stringify({ tier: PLAN.tier }) });
-      if (d.access_code) { await openPaystackInline(d.access_code); setBusy(false); return; }
+      const checkout = d.data || d;
+      if (checkout.access_code || checkout.authorization_url) {
+        await openPaystackInline(checkout.access_code, checkout.authorization_url, (error) => toast.error(error.message));
+        setBusy(false);
+        return;
+      }
       toast.error('Paystack did not return a checkout code. Try again.');
     } catch (e) { toast.error(e.message); }
     setBusy(false);
