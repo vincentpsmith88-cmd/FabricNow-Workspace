@@ -93,13 +93,16 @@ const ss=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t
    refined by the AI stylist on the server (cleanStyle clamps whatever comes back, so the cloth can never go inside the body). */
 const clampN=(v,a,b,d)=>{const n=Number(v);return Number.isFinite(n)?Math.min(b,Math.max(a,n)):d};
 export const SILHOUETTES=['pencil','a-line','gathered','flared'];
+export const STYLE_PRESETS={
+ pencil:{roundness:.3,hemFlare:0,foldCount:0,foldDepth:0},
+ 'a-line':{roundness:.6,hemFlare:.02,foldCount:0,foldDepth:.015},
+ gathered:{roundness:.85,hemFlare:.04,foldCount:8,foldDepth:.035},
+ flared:{roundness:1,hemFlare:.06,foldCount:10,foldDepth:.05}
+};
+export const presetStyle=name=>({silhouette:name,...STYLE_PRESETS[name],easeBust:.04,easeWaist:.03,easeHip:.03});
 export function styleFromProfile(profile,meas={hip:98}){
  const sk=profile?.tubes?.find(t=>t.kind==='skirt'),full=sk?sk.rings[sk.rings.length-1].C/(meas.hip||98):1;
- const base=full<=1.1?{silhouette:'pencil',roundness:.3,hemFlare:0,foldCount:0,foldDepth:0}
-  :full<=1.5?{silhouette:'a-line',roundness:.6,hemFlare:.02,foldCount:0,foldDepth:.015}
-  :full<=2.5?{silhouette:'gathered',roundness:.85,hemFlare:.04,foldCount:8,foldDepth:.035}
-  :{silhouette:'flared',roundness:1,hemFlare:.06,foldCount:10,foldDepth:.05};
- return {...base,easeBust:.04,easeWaist:.03,easeHip:.03};
+ return presetStyle(full<=1.1?'pencil':full<=1.5?'a-line':full<=2.5?'gathered':'flared');
 }
 export function cleanStyle(raw,base){
  const r=raw&&typeof raw==='object'?raw:{},b=base||styleFromProfile(null);
@@ -160,15 +163,16 @@ export function fitGarment(profile,body,{heightCm,meas={bust:92,waist:74,hip:98}
    const circ=ss(1.25,2.6,ratio); // very full skirts open up into a circle
    const want=new Float32Array(K),lo=new Float32Array(K);
    for(let j=0;j<K;j++){want[j]=lerp(base.env[j]*ratio,mean*ratio,circ)+margin;lo[j]=(need?need[j]:0)+margin;want[j]=Math.max(want[j],lo[j])}
-   if(tube.kind==='skirt'){
-    const frac=i/Math.max(1,n-1),below=y<L.yH?(L.yH-y)*heightCm:0,round=st.roundness*ss(0,28,below);
-    if(round>0){ // a skirt hangs from the hip and rounds out as it falls; it does not wrap each thigh
+   const below=y<L.yH?(L.yH-y)*heightCm:0;
+   if(tube.kind==='skirt'||below>0){ // a skirt, or the part of a longer top that hangs below the hip
+    const frac=i/Math.max(1,n-1),low=tube.kind==='skirt'?1:ss(0,15,below),round=st.roundness*ss(0,28,below);
+    if(round>0){ // it hangs from the hip and rounds out as it falls; it does not wrap each thigh
      let maxNeed=0;if(need)for(let j=0;j<K;j++)if(need[j]>maxNeed)maxNeed=need[j];
      const target=Math.max(r.C/TAU/heightCm,maxNeed*1.02),sm=angSmooth(want,5);
-     for(let j=0;j<K;j++){const open=Math.max(want[j],lerp(sm[j],Math.max(sm[j],target),round));want[j]=open}
+     for(let j=0;j<K;j++)want[j]=Math.max(want[j],lerp(sm[j],Math.max(sm[j],target),round));
     }
-    if(st.hemFlare>0){const k=1+st.hemFlare*ss(.35,1,frac);for(let j=0;j<K;j++)want[j]*=k}
-    if(st.foldCount>0&&st.foldDepth>0){const amp=st.foldDepth*ss(.12,1,frac);for(let j=0;j<K;j++)want[j]*=1+amp*(.5+.5*Math.cos(st.foldCount*(j/K*TAU)+frac*.9))} // folds only push outwards, never into the body
+    if(st.hemFlare>0){const k=1+st.hemFlare*ss(.35,1,frac)*low;for(let j=0;j<K;j++)want[j]*=k}
+    if(st.foldCount>0&&st.foldDepth>0){const amp=st.foldDepth*ss(.12,1,frac)*low;for(let j=0;j<K;j++)want[j]*=1+amp*(.5+.5*Math.cos(st.foldCount*(j/K*TAU)+frac*.9))} // folds only push outwards, never into the body
    }
    radii.push(want);minR.push(lo);centers.push([base.cx,base.cz]);ys.push(y);
   });

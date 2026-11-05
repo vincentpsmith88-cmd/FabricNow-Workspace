@@ -19,3 +19,9 @@
 .fm-warn{color:var(--wait,#8A5A00);background:var(--wait-bg,#FFF3D6);padding:9px 11px;border-radius:11px}
 .fm-open{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border-radius:12px;border:1px solid var(--line,#E6E8F0);font-size:.8rem;font-weight:700;color:var(--text,#24213B);background:transparent}
 .fm-open:hover{border-color:var(--orange,#E66239);background:var(--orange-wash,#FDEEE8)}
+
+.fm-seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:3px;border-radius:12px;background:var(--bg-soft,rgba(0,0,0,.05))}
+.fm-seg button{border:0;background:none;padding:7px 4px;border-radius:9px;font-size:.74rem;font-weight:700;color:inherit;cursor:pointer}
+.fm-seg button.on{background:var(--orange,#E66239);color:#fff}
+.fm-range b{font-weight:700;opacity:.7;margin-left:6px}
+.fm-garment .fm-link:disabled{opacity:.55;cursor:default}

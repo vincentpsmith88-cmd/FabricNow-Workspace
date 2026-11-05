@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Box, Camera, Check, FileBox, Lightbulb, Maximize2, Minimize2, Moon, Rotate3D, Ruler, Scissors, Search, Shirt, Sun } from 'lucide-react';
 import { api } from '../api.js';
 import { buildProfile } from './tailor/garment3d.js';
-import { styleFromProfile, cleanStyle } from '../components/garmentFit.js';
+import { styleFromProfile, cleanStyle, presetStyle, SILHOUETTES } from '../components/garmentFit.js';
 import { withPath } from './tailor/geometry.js';
 import { PRINTS, printById, tileOf, tileSvg } from './tailor/fabrics.js';
 import './fit-garment.css';
@@ -15,6 +15,18 @@ const LIGHTS = [['studio', 'Studio', Lightbulb], ['daylight', 'Daylight', Sun], 
 const kindOf = (m) => (m.child ? 'child' : m.gender);
 
 /** Pictogram drawn from the model's own measurements so every body is recognisable in the list. */
+/* A slider that only refits the dress when you let go, so dragging stays smooth. */
+function StyleSlider({ label, value, min, max, step, show, onCommit }) {
+  const [v, setV] = useState(value);
+  React.useEffect(() => { setV(value); }, [value]);
+  const done = () => { if (v !== value) onCommit(+v); };
+  return (
+    <label className="fm-range"><span>{label} <b>{show(v)}</b></span>
+      <input type="range" min={min} max={max} step={step} value={v} onChange={(e) => setV(+e.target.value)} onPointerUp={done} onKeyUp={done} onBlur={done} />
+    </label>
+  );
+}
+
 function Silhouette({ m, child }) {
   const h = m.height, top = 197 - h, cx = 50;
   const y = (f) => top + h * f;
@@ -92,22 +104,31 @@ export default function FitModels({ setPage }) {
     return { profile, fabrics, meas: m, patternHeightCm: 172, summary, baseStyle: styleFromProfile(profile, m) };
   }, [board, print]);
 
-  /* The AI stylist picks how the garment hangs (silhouette, ease, folds). Until it answers, or if it cannot, the pattern-based defaults are used. */
-  const [aiStyle, setAiStyle] = useState(null);
-  React.useEffect(() => {
-    setAiStyle(null);
-    if (!wear || !garment || garment.unsupported) return;
+  /* How the dress hangs. Order of priority: what you set yourself, then the AI stylist, then settings worked out from the pattern. */
+  const [aiStyle, setAiStyle] = useState(null), [userStyle, setUserStyle] = useState(null), [ai, setAi] = useState({ status: 'idle' });
+  const askAi = React.useCallback((force) => {
+    if (!garment || garment.unsupported) return () => {};
     const key = JSON.stringify(garment.summary);
     let h = 0; for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
     const ck = 'fabricnow.drape.' + h;
-    try { const hit = JSON.parse(sessionStorage.getItem(ck) || 'null'); if (hit) { setAiStyle(hit); return; } } catch { /* ignore */ }
-    let dead = false;
+    if (!force) { try { const hit = JSON.parse(sessionStorage.getItem(ck) || 'null'); if (hit) { setAiStyle(hit); setAi({ status: 'ok' }); return () => {}; } } catch { /* ignore */ } }
+    let dead = false; setAi({ status: 'loading' });
     api('/api/tailor-tools/drape-style', { method: 'POST', body: JSON.stringify({ summary: garment.summary }) })
-      .then((d) => { if (dead || !d?.style) return; const st = cleanStyle(d.style, garment.baseStyle); try { sessionStorage.setItem(ck, JSON.stringify(st)); } catch { /* ignore */ } setAiStyle(st); })
-      .catch(() => {});
+      .then((d) => {
+        if (dead) return;
+        if (!d?.style) { setAi({ status: 'default', reason: d?.reason || 'No answer' }); return; }
+        const st = cleanStyle(d.style, garment.baseStyle);
+        try { sessionStorage.setItem(ck, JSON.stringify(st)); } catch { /* ignore */ }
+        setAiStyle(st); setAi({ status: 'ok' });
+      })
+      .catch((e) => { if (!dead) setAi({ status: 'default', reason: e?.message || 'Request failed' }); });
     return () => { dead = true; };
-  }, [garment, wear]);
-  const wearable = useMemo(() => (wear && garment && !garment.unsupported ? { ...garment, style: aiStyle || garment.baseStyle } : null), [wear, garment, aiStyle]);
+  }, [garment]);
+  React.useEffect(() => { setUserStyle(null); }, [boardId]); // your own style only resets when you switch boards, not when you try another fabric
+  React.useEffect(() => { setAiStyle(null); setAi({ status: 'idle' }); if (!wear) return; return askAi(false); }, [garment, wear, askAi]);
+  const curStyle = userStyle || aiStyle || garment?.baseStyle || null;
+  const setStyleKey = (k, v) => setUserStyle(cleanStyle({ ...curStyle, [k]: v }, garment.baseStyle));
+  const wearable = useMemo(() => (wear && garment && !garment.unsupported ? { ...garment, style: curStyle || garment.baseStyle } : null), [wear, garment, curStyle]);
   React.useEffect(() => { if (!wearable) setInfo({ status: 'none' }); }, [wearable]);
   const pickPrint = (id) => setPrint({ id, colors: printById(id).colors.slice(), scale: print?.scale || 100, rot: print?.rot || 0 });
 
@@ -207,6 +228,30 @@ export default function FitModels({ setPage }) {
                     </button>); })}
                 </div>
                 {print && <label className="fm-range"><span>Print size</span><input type="range" min="40" max="300" value={print.scale || 100} onChange={(e) => setPrint({ ...print, scale: +e.target.value })} /></label>}
+                {curStyle && (
+                  <>
+                    <div className="fm-sub">Dress style</div>
+                    <div className="fm-seg" role="group" aria-label="Silhouette">
+                      {SILHOUETTES.map((k) => <button type="button" key={k} className={curStyle.silhouette === k ? 'on' : ''} onClick={() => setUserStyle(presetStyle(k))}>{k === 'a-line' ? 'A-line' : k[0].toUpperCase() + k.slice(1)}</button>)}
+                    </div>
+                    <StyleSlider label="Hem flare" value={curStyle.hemFlare} min={0} max={0.25} step={0.01} show={(v) => `${Math.round(v * 100)}%`} onCommit={(v) => setStyleKey('hemFlare', v)} />
+                    <StyleSlider label="Folds" value={curStyle.foldCount} min={0} max={16} step={1} show={(v) => (v ? v : 'none')} onCommit={(v) => setStyleKey('foldCount', v)} />
+                    <StyleSlider label="Fold depth" value={curStyle.foldDepth} min={0} max={0.08} step={0.005} show={(v) => `${Math.round(v * 1000) / 10}%`} onCommit={(v) => setStyleKey('foldDepth', v)} />
+                    <StyleSlider label="Roundness" value={curStyle.roundness} min={0} max={1} step={0.05} show={(v) => `${Math.round(v * 100)}%`} onCommit={(v) => setStyleKey('roundness', v)} />
+                    <StyleSlider label="Ease at hips" value={curStyle.easeHip} min={0.02} max={0.2} step={0.01} show={(v) => `${Math.round(v * 100)}%`} onCommit={(v) => setStyleKey('easeHip', v)} />
+                    <div className="fm-garment-row">
+                      <button type="button" className="fm-link" disabled={ai.status === 'loading'} onClick={() => { setUserStyle(null); askAi(true); }}>{ai.status === 'loading' ? 'Asking the AI stylist…' : '✨ Let AI choose'}</button>
+                      <button type="button" className="fm-link" onClick={() => { setUserStyle(null); setAiStyle(null); }}>Reset to pattern</button>
+                    </div>
+                    <p className={`fm-note${ai.status === 'default' ? ' fm-warn' : ''}`}>
+                      {userStyle ? 'Using your style settings.'
+                        : ai.status === 'ok' && aiStyle ? `Style chosen by the AI stylist: ${aiStyle.silhouette}. Change anything above to take over.`
+                        : ai.status === 'default' ? `AI styling unavailable (${ai.reason}). Using settings worked out from the pattern.`
+                        : ai.status === 'loading' ? 'Asking the AI stylist…'
+                        : 'Using settings worked out from the pattern.'}
+                    </p>
+                  </>
+                )}
                 {info.status === 'error' && <p className="fm-note fm-warn">{info.message}</p>}
                 {info.status === 'ok' && info.notes?.map((n, i) => <p className="fm-note" key={i}>{n}</p>)}
                 <p className="fm-note">The garment is fitted to this model's real body shape. It covers the torso and hips down to the hem. Sleeves are not shown yet.</p>
