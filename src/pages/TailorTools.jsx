@@ -15,7 +15,7 @@ import {lengthenPiece,widenPiece,versionOps} from './tailor/lengthen.js';
 import {roleOf} from './tailor/garment3d.js';
 import {PRINTS,printById,tileOf} from './tailor/fabrics.js';
 import FabricPicker from './tailor/FabricPicker.jsx';
-import {buildPiecesZip,saveBlob} from './tailor/exportZip.js';
+import {buildPiecesZip,wholeBoardSvg,saveBlob} from './tailor/exportZip.js';
 import './tailor-tools.css';
 
 const TOOLS=[
@@ -192,15 +192,26 @@ export default function TailorTools({setPage}){
  };
  const save=async()=>{setSaving(true);try{await persist();toast.success(projectId?'Saved to the linked project.':'Tailor board saved.')}catch(e){toast.error(e.message)}finally{setSaving(false)}};
  /* every piece as its own real-size SVG in one ZIP; built in the browser from what is on the board right now */
- const exportZip=()=>{
+ /* New accounts get 3 free downloads; unlimited on an API Growth plan. The server counts them. */
+ const [dl,setDl]=useState(null);
+ useEffect(()=>{api('/api/tailor-tools/download-status').then(setDl).catch(()=>{})},[]);
+ const takePass=async()=>{try{const d=await api('/api/tailor-tools/download-pass',{method:'POST'});setDl(d);return true}catch(e){toast.error(e.message);return false}};
+ const fabricExport=()=>({on:fabricOn,garment:garmentFabric});
+ const exportZip=async()=>{
   try{
-   const z=buildPiecesZip(ops);
+   const z=buildPiecesZip(ops,fabricExport());
    if(!z)return toast.info('Add at least one pattern piece first.');
+   if(!await takePass())return;
    saveBlob(z.blob,`${(board?.name||'tailor-board').replace(/\s+/g,'-')}-pieces.zip`);
    toast.success(`Downloaded ${z.count} piece${z.count===1?'':'s'} as SVG files in one ZIP.`);
   }catch(e){toast.error('Could not make the ZIP. '+(e.message||''))}
  };
- const exportSvg=async()=>{setSaving(true);try{const b=await persist();await downloadFile(`/api/tailor-tools/boards/${b.id}/export.svg`,`${(b.name||'tailor-board').replace(/\s+/g,'-')}.svg`)}catch(e){toast.error(e.message)}finally{setSaving(false)}};
+ const exportSvg=async()=>{
+  const svg=wholeBoardSvg(ops,fabricExport());
+  if(!svg)return toast.info('Add at least one pattern piece first.');
+  setSaving(true);
+  try{const b=await persist();if(!await takePass())return;saveBlob(new Blob([svg],{type:'image/svg+xml'}),`${(b.name||'tailor-board').replace(/\s+/g,'-')}.svg`)}catch(e){toast.error(e.message)}finally{setSaving(false)}
+ };
  const loadBoard=id=>{const b=boards.find(x=>x.id===id);if(b)applyBoard(b)};
 
  /* blocks */
@@ -399,7 +410,7 @@ export default function TailorTools({setPage}){
  const genStitch=async()=>{setBusyKind('sew');try{const d=await api('/api/tailor-tools/stitch-plan',{method:'POST',body:JSON.stringify({...ctx(),operations:ops,request:`Garment pieces (cm): ${JSON.stringify(summary)}. ${SCALE_NOTE} Give a numbered stitch_plan in a sensible industry sewing order, with seam allowances and finishing notes.`})});setStitch(d);setSewDone([])}catch(e){toast.error(e.message)}finally{setBusyKind('')}};
  const layout=useMemo(()=>computeLayout(ops,{fabricW:fab.w,withAllowance:fab.allow,rotate:fab.rotate}),[ops,fab]);
  const genCutAi=async()=>{setBusyKind('cut');try{const d=await api('/api/tailor-tools/cutting-layout',{method:'POST',body:JSON.stringify({...ctx(),operations:ops,request:`Fabric width ${fab.w} cm. Estimated length ${layout.length.toFixed(0)} cm at ${(layout.efficiency*100).toFixed(0)}% efficiency for pieces ${JSON.stringify(summary)}. ${SCALE_NOTE} Advise on grain, nap, pattern matching, interfacing and cutting order. Do not invent measurements.`})});setCutAi(d)}catch(e){toast.error(e.message)}finally{setBusyKind('')}};
- const downloadLayout=()=>{const url=URL.createObjectURL(new Blob([layoutSvg(layout,board?.name||'Cutting layout')],{type:'image/svg+xml'}));const a=document.createElement('a');a.href=url;a.download='cutting-layout.svg';a.click();URL.revokeObjectURL(url)};
+ const downloadLayout=async()=>{if(!await takePass())return;const url=URL.createObjectURL(new Blob([layoutSvg(layout,board?.name||'Cutting layout')],{type:'image/svg+xml'}));const a=document.createElement('a');a.href=url;a.download='cutting-layout.svg';a.click();URL.revokeObjectURL(url)};
  const toggleCheck=i=>setChecked(c=>c.includes(i)?c.filter(x=>x!==i):[...c,i]);
 
  const activeTool=TOOLS.find(t=>t[0]===tool);
@@ -428,7 +439,7 @@ export default function TailorTools({setPage}){
    <div className="tt-actions">
     <button className="btn btn-ghost" onClick={create}><Plus size={15}/> New board</button>
     <button className="btn btn-ghost" onClick={exportSvg} disabled={saving||!ops.length} title="Saves the board, then downloads every piece at real size (1 unit = 1 cm)"><Download size={15}/> Save &amp; download SVG</button>
-    <button className="btn btn-ghost" onClick={exportZip} disabled={!ops.some(o=>o.type==='piece')} title="Download every piece as its own real-size SVG, zipped (1 unit = 1 cm)"><Download size={15}/> Download all (ZIP)</button>
+    <button className="btn btn-ghost" onClick={exportZip} disabled={!ops.some(o=>o.type==='piece')} title="Download every piece as its own real-size SVG, zipped (1 unit = 1 cm)"><Download size={15}/> Download all (ZIP)</button>{dl&&!dl.unlimited&&<span className="tt-note" title="API Growth has unlimited downloads">{dl.remaining} of {dl.limit} free downloads left</span>}
     <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?<Sparkles size={15}/>:<Save size={15}/>} {saving?'Saving…':'Save board'}</button>
    </div>
   </header>

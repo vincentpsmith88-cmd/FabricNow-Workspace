@@ -1,4 +1,5 @@
-import {bbox,fullOutline,saPoints,isLine} from './geometry.js';
+import {bbox,fullOutline} from './geometry.js';
+import {tileOf} from './fabrics.js';
 
 /* Download every piece on the board as its own real-size SVG, packed in one ZIP (no extra library needed).
    Board units are centimetres, so each file is written with width/height in cm and opens at true size. */
@@ -8,37 +9,37 @@ const r=n=>+(+n).toFixed(3);
 const slug=s=>(String(s||'piece').normalize('NFKD').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-').slice(0,48)||'piece');
 const poly=pts=>pts.map(([x,y])=>`${r(x)},${r(y)}`).join(' ');
 
-/* The drawing of one piece, in board coordinates (so it can be used alone or on the whole-board sheet). */
-function pieceMarkup(o,ops){
- const outline=fullOutline(o);
- const sa=(o.allowance??1)>0?saPoints({...o,points:outline,fold:false,allowance:o.allowance??1}):null;
- let g=`<g id="${esc(slug(o.name))}" data-piece="${esc(o.name)}" data-cut="${esc(o.cut??1)}">`;
- if(sa)g+=`<polygon id="seam-allowance" points="${poly(sa)}" fill="none" stroke="#e66239" stroke-width="0.05" stroke-dasharray="0.5 0.35"/>`;
- g+=`<polygon id="cut-line" points="${poly(outline)}" fill="none" stroke="#000" stroke-width="0.06" stroke-linejoin="round"/>`;
- for(const c of ops.filter(x=>x.parent===o.id)){
-  if(isLine(c))g+=`<line data-kind="${esc(c.type)}" x1="${r(c.x1)}" y1="${r(c.y1)}" x2="${r(c.x2)}" y2="${r(c.y2)}" stroke="#000" stroke-width="0.04"${c.type==='grainline'||c.type==='stitch'?' stroke-dasharray="0.6 0.3"':''}/>`;
-  else if(c.type==='notch'&&typeof c.x==='number')g+=`<circle data-kind="notch" cx="${r(c.x)}" cy="${r(c.y)}" r="0.25" fill="#000"/>`;
+/* The drawing of one piece, in board coordinates (so it can be used alone or on the whole-board sheet).
+   Outline only: just the cut line. No seam-allowance border, no labels. When a fabric is on, the piece is
+   filled with that fabric so the file looks like a piece cut from it. */
+function pieceMarkup(o,ops,fabric){
+ const outline=fullOutline(o),b=bbox(outline),pid='fab-'+String(o.id).replace(/[^\w-]/g,'');
+ let defs='',fill='none';
+ if(fabric){
+  const t=tileOf(fabric);
+  defs=`<pattern id="${pid}" patternUnits="userSpaceOnUse" width="${t.w}" height="${t.h}" patternTransform="translate(${r(b.x)} ${r(b.y)}) rotate(${fabric.rot||0}) scale(${(fabric.scale||100)/100})">${t.markup}</pattern>`;
+  fill=`url(#${pid})`;
  }
- const b=bbox(outline);
- g+=`<text x="${r(b.x+b.w/2)}" y="${r(b.y+b.h/2)}" font-family="Helvetica,Arial,sans-serif" font-size="1.1" text-anchor="middle" fill="#000">${esc(o.name)}</text>`;
- g+=`<text x="${r(b.x+b.w/2)}" y="${r(b.y+b.h/2+1.5)}" font-family="Helvetica,Arial,sans-serif" font-size="0.8" text-anchor="middle" fill="#555">Cut ${esc(o.cut??1)}${o.fold?' on fold':''} · ${r(b.w)} × ${r(b.h)} cm</text>`;
- return {g:g+'</g>',box:sa?bbox([...outline,...sa]):b};
+ const g=`<g id="${esc(slug(o.name))}" data-piece="${esc(o.name)}" data-cut="${esc(o.cut??1)}"><polygon id="cut-line" points="${poly(outline)}" fill="${fill}" stroke="#000" stroke-width="0.06" stroke-linejoin="round"/></g>`;
+ return {g,defs,box:b};
 }
 
-const svgDoc=(inner,box,pad=1.5)=>{
+const svgDoc=(inner,box,pad=1.5,defs='')=>{
  const w=r(box.w+pad*2),h=r(box.h+pad*2);
- return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w}cm" height="${h}cm" viewBox="${r(box.x-pad)} ${r(box.y-pad)} ${w} ${h}">\n<!-- 1 unit = 1 cm. Solid line = cut line, dashed orange = seam allowance. -->\n${inner}\n</svg>\n`;
+ return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w}cm" height="${h}cm" viewBox="${r(box.x-pad)} ${r(box.y-pad)} ${w} ${h}">\n<!-- 1 unit = 1 cm. Solid line = cut line. -->\n${defs?`<defs>${defs}</defs>\n`:''}${inner}\n</svg>\n`;
 };
 
-export function pieceFiles(ops){
+/* fabric: {on, garment, } - the board's fabric setting; a piece's own fabric wins over the garment one. */
+export function pieceFiles(ops,fabric){
  const pieces=ops.filter(o=>o.type==='piece'&&o.points?.length>=3);
- const files=[],made=pieces.map(o=>({o,...pieceMarkup(o,ops)}));
- made.forEach((m,i)=>files.push({name:`${String(i+1).padStart(2,'0')}-${slug(m.o.name)}.svg`,text:svgDoc(m.g,m.box)}));
+ const fabOf=o=>fabric?.on?(o.fabric||fabric.garment||null):null;
+ const files=[],made=pieces.map(o=>({o,...pieceMarkup(o,ops,fabOf(o))}));
+ made.forEach((m,i)=>files.push({name:`${String(i+1).padStart(2,'0')}-${slug(m.o.name)}.svg`,text:svgDoc(m.g,m.box,1.5,m.defs)}));
  if(made.length){
   const all=bbox(made.flatMap(m=>[[m.box.x,m.box.y],[m.box.x+m.box.w,m.box.y+m.box.h]]));
-  files.unshift({name:'00-whole-board.svg',text:svgDoc(made.map(m=>m.g).join('\n'),all,3)});
+  files.unshift({name:'00-whole-board.svg',text:svgDoc(made.map(m=>m.g).join('\n'),all,3,made.map(m=>m.defs).join(''))});
  }
- files.push({name:'pieces.json',text:JSON.stringify({unit:'cm',pieces:made.map((m,i)=>({file:files.find(f=>f.name.startsWith(String(i+1).padStart(2,'0')+'-')).name,name:m.o.name,cut:m.o.cut??1,fold:!!m.o.fold,seamAllowanceCm:m.o.allowance??1,widthWithAllowanceCm:r(m.box.w),heightWithAllowanceCm:r(m.box.h)}))},null,2)});
+ files.push({name:'pieces.json',text:JSON.stringify({unit:'cm',pieces:made.map((m,i)=>({file:files.find(f=>f.name.startsWith(String(i+1).padStart(2,'0')+'-')).name,name:m.o.name,cut:m.o.cut??1,fold:!!m.o.fold,seamAllowanceCm:m.o.allowance??1,widthCm:r(m.box.w),heightCm:r(m.box.h)}))},null,2)});
  return files;
 }
 
@@ -65,8 +66,12 @@ export function makeZip(files,date=new Date()){
  return new Blob([...parts,...central,new Uint8Array(end.buffer)],{type:'application/zip'});
 }
 
-export function buildPiecesZip(ops){
- const files=pieceFiles(ops);
+export function wholeBoardSvg(ops,fabric){
+ const f=pieceFiles(ops,fabric).find(x=>x.name==='00-whole-board.svg');
+ return f?f.text:null;
+}
+export function buildPiecesZip(ops,fabric){
+ const files=pieceFiles(ops,fabric);
  if(!files.some(f=>f.name!=='pieces.json'))return null;
  return {blob:makeZip(files),count:files.length-2};
 }

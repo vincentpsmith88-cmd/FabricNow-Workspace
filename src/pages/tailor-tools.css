@@ -274,7 +274,7 @@
 
 /* ---- Fabric browser (handles 100+ fabrics) ---- */
 .fp{display:grid;gap:10px;min-width:0}
-.fp-bar{display:flex;gap:8px;align-items:center}
+.fp-bar{display:flex;gap:8px;align-items:center;justify-content:flex-end}
 .fp-search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--tt-line);border-radius:12px;background:var(--bg);color:var(--muted)}
 .fp-search:focus-within{border-color:var(--orange);box-shadow:0 0 0 3px rgba(230,98,57,.18)}
 .fp-search input{flex:1;min-width:0;border:0;background:none;outline:none;padding:9px 0;font-size:.82rem;color:var(--text)}
