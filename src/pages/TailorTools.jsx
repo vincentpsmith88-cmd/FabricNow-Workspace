@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {api,API,downloadFile} from '../api.js';
 import {useToast} from '../toast.jsx';
-import {Bot,Check,CheckCircle2,ChevronDown,Circle,Copy,Crosshair,Divide,Download,Eye,EyeOff,FlipHorizontal,Hand,Image as ImageIcon,Layers3,LayoutGrid,ListOrdered,Magnet,Maximize2,Minus,Move,Palette,PenTool,Plus,Redo2,Ruler,Save,Scissors,Shapes,ShieldCheck,Shirt,SlidersHorizontal,Sparkles,Square,SquareDashed,Trash2,Undo2,Upload,Wand2,ZoomIn,ZoomOut} from 'lucide-react';
+import {Bot,Check,CheckCircle2,ChevronDown,Circle,Copy,Crosshair,Divide,Download,Eye,EyeOff,FlipHorizontal,Hand,Image as ImageIcon,Layers3,LayoutGrid,ListOrdered,Magnet,Maximize2,Minimize2,Minus,Move,Palette,PenTool,Plus,Redo2,Ruler,Save,Scissors,Shapes,ShieldCheck,Shirt,SlidersHorizontal,Sparkles,Square,SquareDashed,Trash2,Undo2,Upload,Wand2,ZoomIn,ZoomOut} from 'lucide-react';
 import Board from './tailor/Board.jsx';
 import {BOARD_W,BOARD_H,uid,clamp,toUnit,fromUnit,num,fmt,isLine,lineLen,bbox,shift,mirrorOp,withPath,syncPiece,pieceEdges,mkPiece,lineHits,pointInPoly,fullOutline} from './tailor/geometry.js';
 import {BLOCKS,STARTERS,SIZES,DEFAULT_MEAS,DEFAULT_STYLE,STYLE_GROUPS,MEAS_FIELDS,blockOps,starterOps,restyleAll,mapProjectMeasurements} from './tailor/blocks.js';
@@ -34,6 +34,14 @@ const TOOLS=[
  ['calibrate','Set photo scale','',Crosshair,'Drag a line over something you know the real length of',true]
 ];
 const TABS=[['ai','AI Tailor',Bot],['inspect','Inspector',SlidersHorizontal],['design','Design',Shapes],['fabric','Fabric',Palette],['photo','Photo',ImageIcon],['checks','Checks',ShieldCheck],['cut','Cutting',LayoutGrid],['sew','Sewing',ListOrdered]];
+/* Unsaved work is kept in this browser so leaving the page never loses a fabric, style or piece. */
+const DRAFT='fabricnow.tt.draft.';
+const readDraft=id=>{try{const d=JSON.parse(localStorage.getItem(DRAFT+(id||'new'))||'null');return d&&Array.isArray(d.ops)?d:null}catch{return null}};
+const clearDraft=id=>{try{localStorage.removeItem(DRAFT+(id||'new'))}catch{}};
+const writeDraft=(id,d)=>{
+ try{localStorage.setItem(DRAFT+(id||'new'),JSON.stringify(d))}
+ catch{try{localStorage.setItem(DRAFT+(id||'new'),JSON.stringify({...d,layers:(d.layers||[]).filter(l=>l.type!=='photo')}))}catch{}}
+};
 const CHECKS=['Grainline is defined','Seam allowances are checked','Notches match joining pieces','Measurements are verified','Stitch order is documented'];
 const FABRIC_PRESETS=[90,112,140,150];
 const DEFAULT_FABRIC={id:'ankara',colors:printById('ankara').colors.slice(),scale:100,rot:0};
@@ -72,11 +80,18 @@ export default function TailorTools({setPage}){
  const [boards,setBoards]=useState([]),[board,setBoard]=useState(null),[ops,setOps]=useState([]),[tool,setTool]=useState('select'),[selected,setSelected]=useState(null),[projects,setProjects]=useState([]),[projectId,setProjectId]=useState(''),[ai,setAi]=useState(null),[request,setRequest]=useState('Check the construction, seam placement, allowances and stitch sequence for this pattern.'),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false),[unit,setUnit]=useState('cm'),[zoom,setZoom]=useState(100),[tab,setTab]=useState('design'),[checked,setChecked]=useState([]),[snap,setSnap]=useState(true),[showSA,setShowSA]=useState(true),[hist,setHist]=useState({past:[],future:[]});
  const [style,setStyle]=useState(DEFAULT_STYLE),[garmentFabric,setGarmentFabric]=useState(DEFAULT_FABRIC),[fabricOn,setFabricOn]=useState(false),[fabTarget,setFabTarget]=useState('garment'),[customSeams,setCustomSeams]=useState([]),[highlight,setHighlight]=useState([]),[tryingOn,setTryingOn]=useState(false),[libFabrics,setLibFabrics]=useState([]),[pairDraft,setPairDraft]=useState({pa:'',ka:'',pb:'',kb:'',type:'seam'}),[meas,setMeas]=useState(DEFAULT_MEAS),[photo,setPhoto]=useState(null),[fab,setFab]=useState({w:150,allow:true,rotate:false,extra:5}),[stitch,setStitch]=useState(null),[sewDone,setSewDone]=useState([]),[cutAi,setCutAi]=useState(null),[busyKind,setBusyKind]=useState('');
  const [lenForm,setLenForm]=useState({mode:'add',value:'',at:.6,flare:true,group:true,hem:true}),[planCm,setPlanCm]=useState(40),planRef=useRef(null),[verSel,setVerSel]=useState({Mini:false,Knee:true,Midi:true,Maxi:false}),[verLen,setVerLen]=useState({Mini:45,Knee:60,Midi:80,Maxi:105}),[verBusy,setVerBusy]=useState(false);
+ const [sideW,setSideW]=useState(()=>{try{return Number(localStorage.getItem('fabricnow.tt.sideW'))||0}catch{return 0}}),[focus,setFocus]=useState(()=>{try{return localStorage.getItem('fabricnow.tt.focus')==='1'}catch{return false}}),wbRef=useRef(null);
  const opsRef=useRef(ops),histRef=useRef(hist),cursorRef=useRef(null),areaRef=useRef(null),fileRef=useRef(null),swatchRef=useRef(null);
+ const appliedAt=useRef(0),pendingDraft=useRef(null),autoTimer=useRef(null),savingRef=useRef(false),[autoState,setAutoState]=useState('');
  opsRef.current=ops;histRef.current=hist;
 
- const applyBoard=b=>{
-  setBoard(b);setOps(Array.isArray(b?.operations)?b.operations.map(withPath):[]);setUnit(b?.unit||'cm');setProjectId(b?.projectId||'');
+ const applyBoard=b0=>{
+  /* a newer unsaved draft of this board (kept in the browser) wins over the last saved version */
+  const dr=readDraft(b0?.id),useDr=!!dr&&dr.at>(Date.parse(b0?.updatedAt)||0);
+  const keepPhoto=(b0?.layers||[]).filter(l=>l.type==='photo'&&!(dr?.layers||[]).some(x=>x.type==='photo'));
+  const b=useDr?{...b0,operations:dr.ops,unit:dr.unit||b0?.unit,projectId:dr.projectId??b0?.projectId,layers:[...(dr.layers||[]),...keepPhoto]}:b0;
+  appliedAt.current=Date.now();if(useDr)setTimeout(()=>toast.info('Restored your unsaved changes.'),0);
+  setBoard(b0);setOps(Array.isArray(b?.operations)?b.operations.map(withPath):[]);setUnit(b?.unit||'cm');setProjectId(b?.projectId||'');
   const ph=b?.layers?.find(l=>l.type==='photo'),me=b?.layers?.find(l=>l.type==='measurements');
   setPhoto(ph&&ph.src?{...ph}:null);setMeas({...DEFAULT_MEAS,...(me?.values||{})});
   const sty=b?.layers?.find(l=>l.type==='style'),fb=b?.layers?.find(l=>l.type==='fabric'),sm=b?.layers?.find(l=>l.type==='seams');
@@ -86,7 +101,7 @@ export default function TailorTools({setPage}){
  /* A design chosen in the Pattern Library arrives through sessionStorage and starts a fresh board. */
  const applySeed=seed=>{
   try{
-   const {ops:o}=seedOps(seed);
+   const {ops:o}=seedOps(seed);appliedAt.current=Date.now();clearDraft('new');
    setBoard(null);setProjectId('');setOps(o);setStyle({...DEFAULT_STYLE,...seed.style});setMeas({...DEFAULT_MEAS,...seed.meas});
    setSelected(null);setAi(null);setStitch(null);setCutAi(null);setHist({past:[],future:[]});setTab('design');
    toast.info(`Started "${seed.name}" in size ${seed.size}. ${(seed.notes||[]).join(' ')}`.trim());
@@ -96,11 +111,31 @@ export default function TailorTools({setPage}){
   let seed=null;
   try{const raw=sessionStorage.getItem('fabricnow.tailorSeed');if(raw){seed=JSON.parse(raw);sessionStorage.removeItem('fabricnow.tailorSeed')}}catch{}
   Promise.allSettled([api('/api/tailor-tools/boards'),api('/api/workspace-suite/projects?limit=50')]).then(([b,p])=>{
-   if(b.status==='fulfilled'){setBoards(b.value.boards||[]);if(!seed&&b.value.boards?.[0])applyBoard(b.value.boards[0])}
+   if(b.status==='fulfilled'){setBoards(b.value.boards||[]);if(!seed){const nd=readDraft('new');if(nd&&nd.ops.length)applyBoard(null);else if(b.value.boards?.[0])applyBoard(b.value.boards[0])}}
    if(p.status==='fulfilled')setProjects(p.value.projects||[]);
    if(seed)applySeed(seed);
   });
  },[]);
+ /* keep a local draft after every change, and quietly save boards that already exist */
+ const flushDraft=()=>{const d=pendingDraft.current;if(d){writeDraft(d.id,d.data);pendingDraft.current=null}};
+ useEffect(()=>{
+  if(Date.now()-appliedAt.current<500)return;
+  if(!ops.length&&!board)return;
+  const id=board?.id||null;
+  pendingDraft.current={id,data:{at:Date.now(),ops,layers:layersPayload(),unit,projectId}};
+  clearTimeout(autoTimer.current);setAutoState('');
+  autoTimer.current=setTimeout(async()=>{
+   flushDraft();
+   if(!id||savingRef.current)return;
+   try{
+    setAutoState('saving');
+    const d=await api(`/api/tailor-tools/boards/${id}`,{method:'PUT',body:JSON.stringify({operations:ops,layers:layersPayload(),projectId:projectId||board.projectId||null,unit,aiContext:ai||{}})});
+    setBoard(d.board);setBoards(bs=>bs.map(x=>x.id===d.board.id?d.board:x));clearDraft(id);setAutoState('saved');
+   }catch{setAutoState('')}
+  },3500);
+  return()=>clearTimeout(autoTimer.current);
+ },[ops,style,meas,garmentFabric,fabricOn,customSeams,photo,unit,projectId]);
+ useEffect(()=>{const h=()=>flushDraft();window.addEventListener('pagehide',h);return()=>{window.removeEventListener('pagehide',h);flushDraft()}},[]);
  useEffect(()=>{if(tab!=='fabric'||libFabrics.length)return;api('/api/workspace-suite/fabrics').then(d=>setLibFabrics((d.fabrics||[]).filter(f=>f.imageUrl))).catch(()=>{})},[tab]);
  useEffect(()=>{const el=areaRef.current;const h=e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();setZoom(z=>clamp(z+(e.deltaY<0?8:-8),50,300))};el.addEventListener('wheel',h,{passive:false});return()=>el.removeEventListener('wheel',h)},[]);
 
@@ -142,14 +177,17 @@ export default function TailorTools({setPage}){
  });
 
  /* boards */
- const create=async()=>{try{const d=await api('/api/tailor-tools/boards',{method:'POST',body:JSON.stringify({name:'Tailor Board',projectId:projectId||null,unit})});setBoards(b=>[d.board,...b]);applyBoard(d.board)}catch(e){toast.error(e.message)}};
+ const create=async()=>{try{const d=await api('/api/tailor-tools/boards',{method:'POST',body:JSON.stringify({name:'Tailor Board',projectId:projectId||null,unit})});setBoards(b=>[d.board,...b]);clearDraft('new');applyBoard(d.board)}catch(e){toast.error(e.message)}};
  const layersPayload=()=>[...(photo?.src?[{type:'photo',...photo}]:[]),{type:'measurements',values:meas},{type:'style',values:style},{type:'fabric',value:garmentFabric,on:fabricOn},{type:'seams',items:customSeams}];
  /* Save the current board (creating it first if this is an unsaved draft) and return the saved board. */
  const persist=async()=>{
+  savingRef.current=true;try{return await persistInner()}finally{savingRef.current=false}
+ };
+ const persistInner=async()=>{
   let b=board;
   if(!b){const d=await api('/api/tailor-tools/boards',{method:'POST',body:JSON.stringify({name:'Tailor Board',projectId:projectId||null,unit})});b=d.board}
   const d=await api(`/api/tailor-tools/boards/${b.id}`,{method:'PUT',body:JSON.stringify({operations:ops,layers:layersPayload(),projectId:projectId||b.projectId||null,unit,aiContext:ai||{}})});
-  setBoard(d.board);setBoards(bs=>bs.some(x=>x.id===d.board.id)?bs.map(x=>x.id===d.board.id?d.board:x):[d.board,...bs]);return d.board;
+  setBoard(d.board);setBoards(bs=>bs.some(x=>x.id===d.board.id)?bs.map(x=>x.id===d.board.id?d.board:x):[d.board,...bs]);clearDraft(d.board.id);if(!board)clearDraft('new');pendingDraft.current=null;return d.board;
  };
  const save=async()=>{setSaving(true);try{await persist();toast.success(projectId?'Saved to the linked project.':'Tailor board saved.')}catch(e){toast.error(e.message)}finally{setSaving(false)}};
  const exportSvg=async()=>{setSaving(true);try{const b=await persist();downloadFile(`${API}/api/tailor-tools/boards/${b.id}/export.svg`,`${(b.name||'tailor-board').replace(/\s+/g,'-')}.svg`)}catch(e){toast.error(e.message)}finally{setSaving(false)}};
@@ -360,7 +398,18 @@ export default function TailorTools({setPage}){
  const lenM=layout.length*(1+fab.extra/100)/100;
  const empty=ops.length===0&&!photo;
 
- return <div className="tt-page">
+ /* side panel: drag the edge to resize, arrows nudge, double-click resets; Focus hides it for a full-width board */
+ const clampSide=w=>Math.round(Math.min(Math.max(w,320),Math.min(760,(wbRef.current?.clientWidth||1200)*.6)));
+ const saveSide=w=>{setSideW(w);try{localStorage.setItem('fabricnow.tt.sideW',String(w))}catch{}};
+ const startResize=e=>{
+  e.preventDefault();const box=wbRef.current;if(!box)return;const right=box.getBoundingClientRect().right;
+  const mv=ev=>setSideW(clampSide(right-ev.clientX));
+  const up=ev=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('tt-resizing');saveSide(clampSide(right-ev.clientX))};
+  document.body.classList.add('tt-resizing');window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);
+ };
+ const nudgeSide=e=>{const cur=sideW||e.currentTarget.nextSibling?.offsetWidth||400;if(e.key==='ArrowLeft'){e.preventDefault();saveSide(clampSide(cur+24))}else if(e.key==='ArrowRight'){e.preventDefault();saveSide(clampSide(cur-24))}else if(e.key==='Enter'||e.key==='Home'){saveSide(0)}};
+ const toggleFocus=()=>setFocus(v=>{const n=!v;try{localStorage.setItem('fabricnow.tt.focus',n?'1':'0')}catch{}return n});
+ return <div className={`tt-page${focus?' tt-focus':''}`}>
   <header className="tt-hero">
    <div className="tt-hero-copy">
     <span className="tt-eyebrow"><Scissors size={13}/> Tailor Tools</span>
@@ -373,17 +422,18 @@ export default function TailorTools({setPage}){
    </div>
   </header>
 
-  <div className="tt-workbench">
+  <div className="tt-workbench" ref={wbRef} style={sideW?{'--tt-side-w':sideW+'px'}:undefined}>
    <section className="tt-stage">
     <div className="tt-stage-bar">
      <div className="tt-title">
       {boards.length>0
        ?<select className="tt-board-select" value={board?.id||''} onChange={e=>loadBoard(e.target.value)} aria-label="Switch board">{boards.map((b,i)=><option key={b.id} value={b.id}>{b.name||'Tailor board'} · #{boards.length-i}</option>)}</select>
        :<strong>Tailor board</strong>}
-      <span className="tt-pill">{currentProject?`Linked · ${currentProject.name}`:'Unsaved draft'}</span>
+      <span className="tt-pill">{currentProject?`Linked · ${currentProject.name}`:'Unsaved draft'}</span>{autoState==='saved'&&<em className="tt-live">Autosaved</em>}
      </div>
      <div className="tt-stage-ctrl">
       <select value={projectId} onChange={e=>setProjectId(e.target.value)} aria-label="Linked project"><option value="">No project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+      <button type="button" className="tt-focus-btn" onClick={toggleFocus} aria-pressed={focus} title={focus?'Show the side panel':'Hide the side panel for a full-width board'}>{focus?<Minimize2 size={15}/>:<Maximize2 size={15}/>}<span>{focus?'Show panel':'Focus board'}</span></button>
       <div className="tt-seg">{['cm','mm','in'].map(u=><button key={u} className={unit===u?'on':''} onClick={()=>setUnit(u)}>{u}</button>)}</div>
      </div>
     </div>
@@ -425,6 +475,7 @@ export default function TailorTools({setPage}){
    </section>
 
    <aside className="tt-side">
+    <div className="tt-resize" role="separator" aria-orientation="vertical" aria-label="Resize panel. Arrow keys change the width, Enter resets it" tabIndex={0} title="Drag to resize · double-click to reset" onPointerDown={startResize} onDoubleClick={()=>saveSide(0)} onKeyDown={nudgeSide}/>
     <div className="tt-tabs" role="tablist">
      {TABS.map(([id,l,I])=><button key={id} role="tab" aria-selected={tab===id} title={l} className={tab===id?'on':''} onClick={()=>setTab(id)}><I size={15}/>{tab===id&&<span>{l}</span>}</button>)}
     </div>

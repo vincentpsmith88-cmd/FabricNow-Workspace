@@ -17,7 +17,7 @@
 .tt-hero .btn-ghost:hover{background:rgba(255,255,255,.18)}
 
 /* Workbench */
-.tt-workbench{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,360px);gap:16px;align-items:stretch}
+.tt-workbench{--tt-side-w:clamp(360px,28vw,480px);flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) var(--tt-side-w);gap:16px;align-items:stretch}
 .tt-stage{display:flex;flex-direction:column;min-height:0;background:var(--tt-card);border:1px solid var(--tt-line);border-radius:22px;box-shadow:var(--shadow-sm);overflow:hidden}
 .tt-stage-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--tt-line)}
 .tt-title{display:flex;align-items:center;gap:10px;min-width:0}
@@ -323,3 +323,19 @@
 .fp-big .fp-large{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 .fp-big .fp-list{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
 @media(max-width:640px){.fp-overlay{padding:0}.fp-dialog{border-radius:0;height:100%;padding:14px}}
+
+/* ---- roomier layout on large screens: resizable side panel, focus mode, slimmer banner ---- */
+.tt-side{position:relative}
+.tt-resize{position:absolute;left:-14px;top:12px;bottom:12px;width:12px;cursor:col-resize;z-index:5;border-radius:6px;touch-action:none}
+.tt-resize::after{content:"";position:absolute;left:5px;top:50%;width:3px;height:44px;margin-top:-22px;border-radius:3px;background:var(--tt-line);transition:background .15s,height .15s}
+.tt-resize:hover::after,.tt-resize:focus-visible::after,.tt-resizing .tt-resize::after{background:var(--orange);height:64px;margin-top:-32px}
+.tt-resize:focus-visible{outline:2px solid var(--orange);outline-offset:1px}
+body.tt-resizing{cursor:col-resize;user-select:none}
+.tt-focus-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:12px;border:1px solid var(--tt-line);background:var(--bg);color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.tt-focus-btn:hover{border-color:var(--orange)}
+.tt-focus .tt-workbench{grid-template-columns:minmax(0,1fr)}
+.tt-focus .tt-side{display:none}
+.tt-focus .tt-hero{padding:6px 14px}.tt-focus .tt-hero-copy{display:none}.tt-focus .tt-hero{justify-content:flex-end}
+@media(max-width:1280px){.tt-resize,.tt-focus-btn{display:none}.tt-focus .tt-side{display:flex}.tt-focus .tt-hero-copy{display:flex}}
+@media(max-width:1500px){.tt-focus-btn span{display:none}}
+.fp-grid{max-height:clamp(260px,46dvh,620px)}
