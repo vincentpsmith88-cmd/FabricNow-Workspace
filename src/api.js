@@ -124,6 +124,8 @@ export async function postForBlob(path, formData) {
 }
 
 export async function downloadFile(path, filename) {
+  /* callers pass a path such as /api/...; a full address is accepted too so the server address is never added twice */
+  if (path.startsWith(API)) path = path.slice(API.length);
   const blob = await fetchBlob(path);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

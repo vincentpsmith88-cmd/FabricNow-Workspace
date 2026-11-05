@@ -15,6 +15,7 @@ import {lengthenPiece,widenPiece,versionOps} from './tailor/lengthen.js';
 import {roleOf} from './tailor/garment3d.js';
 import {PRINTS,printById,tileOf} from './tailor/fabrics.js';
 import FabricPicker from './tailor/FabricPicker.jsx';
+import {buildPiecesZip,saveBlob} from './tailor/exportZip.js';
 import './tailor-tools.css';
 
 const TOOLS=[
@@ -190,7 +191,16 @@ export default function TailorTools({setPage}){
   setBoard(d.board);setBoards(bs=>bs.some(x=>x.id===d.board.id)?bs.map(x=>x.id===d.board.id?d.board:x):[d.board,...bs]);clearDraft(d.board.id);if(!board)clearDraft('new');pendingDraft.current=null;return d.board;
  };
  const save=async()=>{setSaving(true);try{await persist();toast.success(projectId?'Saved to the linked project.':'Tailor board saved.')}catch(e){toast.error(e.message)}finally{setSaving(false)}};
- const exportSvg=async()=>{setSaving(true);try{const b=await persist();downloadFile(`${API}/api/tailor-tools/boards/${b.id}/export.svg`,`${(b.name||'tailor-board').replace(/\s+/g,'-')}.svg`)}catch(e){toast.error(e.message)}finally{setSaving(false)}};
+ /* every piece as its own real-size SVG in one ZIP; built in the browser from what is on the board right now */
+ const exportZip=()=>{
+  try{
+   const z=buildPiecesZip(ops);
+   if(!z)return toast.info('Add at least one pattern piece first.');
+   saveBlob(z.blob,`${(board?.name||'tailor-board').replace(/\s+/g,'-')}-pieces.zip`);
+   toast.success(`Downloaded ${z.count} piece${z.count===1?'':'s'} as SVG files in one ZIP.`);
+  }catch(e){toast.error('Could not make the ZIP. '+(e.message||''))}
+ };
+ const exportSvg=async()=>{setSaving(true);try{const b=await persist();await downloadFile(`/api/tailor-tools/boards/${b.id}/export.svg`,`${(b.name||'tailor-board').replace(/\s+/g,'-')}.svg`)}catch(e){toast.error(e.message)}finally{setSaving(false)}};
  const loadBoard=id=>{const b=boards.find(x=>x.id===id);if(b)applyBoard(b)};
 
  /* blocks */
@@ -418,6 +428,7 @@ export default function TailorTools({setPage}){
    <div className="tt-actions">
     <button className="btn btn-ghost" onClick={create}><Plus size={15}/> New board</button>
     <button className="btn btn-ghost" onClick={exportSvg} disabled={saving||!ops.length} title="Saves the board, then downloads every piece at real size (1 unit = 1 cm)"><Download size={15}/> Save &amp; download SVG</button>
+    <button className="btn btn-ghost" onClick={exportZip} disabled={!ops.some(o=>o.type==='piece')} title="Download every piece as its own real-size SVG, zipped (1 unit = 1 cm)"><Download size={15}/> Download all (ZIP)</button>
     <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?<Sparkles size={15}/>:<Save size={15}/>} {saving?'Saving…':'Save board'}</button>
    </div>
   </header>
