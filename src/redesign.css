@@ -209,3 +209,5 @@
   .fm-views button{min-width:0;padding:0 11px}
 }
 @media(prefers-reduced-motion:reduce){.fm-live i,.fmv-spin,.ps-progress i{animation:none!important}}
+
+.ps-ideas button.on{background:var(--orange);border-color:var(--orange);color:#fff}

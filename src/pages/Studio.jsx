@@ -16,6 +16,12 @@ const STEPS = [
   ['04', 'Review', 'Production files'],
 ];
 const MAX_NOTES = 500;
+const FORMAT_GROUPS = [
+  ['Length', ['Mini', 'Knee length', 'Midi', 'Maxi']],
+  ['Sleeve', ['Sleeveless', 'Cap sleeve', 'Short sleeve', 'Three-quarter sleeve', 'Long sleeve']],
+  ['Shape', ['A-line', 'Fitted', 'Gathered', 'Flared', 'Wrap', 'Shift']],
+];
+const ALL_FORMATS = FORMAT_GROUPS.flatMap(([, f]) => f);
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
 function Hero({ eyebrow, title, body, stage, actions }) {
@@ -49,6 +55,9 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   const [garment] = useState('Auto-detect');
   const [lining, setLining] = useState('none');
   const [notes, setNotes] = useState('');
+  const [formats, setFormats] = useState([]);
+  const [extraCuts, setExtraCuts] = useState(true);
+  const [formatNote, setFormatNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [secs, setSecs] = useState(0);
   const [error, setError] = useState('');
@@ -87,7 +96,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   }, [busy]);
 
   const reset = () => {
-    setFile(null); setSwatch(null); setNotes(''); setLining('none');
+    setFile(null); setSwatch(null); setNotes(''); setLining('none'); setFormats([]); setFormatNote('');
     setResult(null); setError('');
   };
 
@@ -95,6 +104,18 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
     if (n.toLowerCase().includes(t.toLowerCase())) return n;
     return `${n.trim() ? `${n.trim().replace(/[,.]$/, '')}, ` : ''}${t.toLowerCase()}`.slice(0, MAX_NOTES);
   });
+
+  const toggleFormat = (f) => setFormats((l) => (l.includes(f) ? l.filter((x) => x !== f) : [...l, f]));
+  /* The pattern engine reads the notes field, so the request for extra formats is also written into the notes in plain words. */
+  const formatBrief = () => {
+    if (!formats.length && !formatNote.trim()) return '';
+    const list = formats.length === ALL_FORMATS.length ? 'every possible dress format (all lengths, sleeves and shapes)' : formats.join(', ');
+    return [
+      formats.length ? `Also draft these dress formats of the same garment: ${list}.` : '',
+      extraCuts ? 'Cut each format as additional pattern pieces after the main pattern, labelled with the format name; only add the pieces that change.' : '',
+      formatNote.trim() ? `Extra instruction: ${formatNote.trim()}` : '',
+    ].filter(Boolean).join(' ');
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -105,7 +126,9 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
       const fd = new FormData();
       fd.append('file', file);
       if (swatch) fd.append('swatch', swatch);
-      fd.append('garment', garment); fd.append('notes', notes); fd.append('lining', lining);
+      const brief = formatBrief();
+      fd.append('garment', garment); fd.append('notes', [notes.trim(), brief].filter(Boolean).join('\n\n')); fd.append('lining', lining);
+      if (brief) { fd.append('variants', JSON.stringify({ formats, all: formats.length === ALL_FORMATS.length, extraCuts, note: formatNote.trim() })); }
       const d = await api('/api/workspace/patterns', { method: 'POST', body: fd });
       setResult(d); onDone(d); toast.success('Pattern job started.');
     } catch (err) { setError(err.message); }
@@ -199,6 +222,27 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
               </div>
             </div>
           </section>
+
+          <section className="ps-card">
+            <div className="ps-card-head">
+              <span className="ps-badge"><Layers3 size={17} /></span>
+              <div><h3>Dress formats &amp; extra cuts</h3><p>Tell the AI which other versions of this dress to draft.</p></div>
+            </div>
+            <div className="ps-ideas" aria-label="Dress formats">
+              <button type="button" className={formats.length === ALL_FORMATS.length ? 'on' : ''} onClick={() => setFormats(formats.length === ALL_FORMATS.length ? [] : ALL_FORMATS)}><Sparkles size={12} />All possible formats</button>
+            </div>
+            {FORMAT_GROUPS.map(([label, list]) => (
+              <div className="ps-notes" key={label} style={{ marginTop: 14 }}>
+                <span className="ps-label">{label}</span>
+                <div className="ps-ideas">{list.map((f) => <button type="button" key={f} className={formats.includes(f) ? 'on' : ''} aria-pressed={formats.includes(f)} onClick={() => toggleFormat(f)}>{formats.includes(f) ? <Check size={12} /> : <Plus size={12} />}{f}</button>)}</div>
+              </div>
+            ))}
+            <label className="ps-label" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 16 }}><input type="checkbox" checked={extraCuts} onChange={(e) => setExtraCuts(e.target.checked)} /> Cut each format as additional pieces</label>
+            <div className="ps-notes">
+              <label className="ps-label" htmlFor="format-note">Tell the AI more <em>optional</em></label>
+              <textarea id="format-note" rows={3} maxLength={200} value={formatNote} onChange={(e) => setFormatNote(e.target.value)} placeholder="e.g. keep the same neckline on every format, add 10 cm for the maxi" />
+            </div>
+          </section>
         </div>
 
         <aside className={`ps-brief ${busy ? 'busy' : ''}`} aria-label="Production brief">
@@ -214,6 +258,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
             <div><dt>Lining</dt><dd>{cap(lining)}</dd></div>
             <div><dt>Fabric</dt><dd>{swatch ? 'Added' : 'None'}</dd></div>
             <div><dt>Notes</dt><dd>{notes.trim() ? `${notes.trim().length} characters` : 'None'}</dd></div>
+            <div><dt>Extra formats</dt><dd>{formats.length ? `${formats.length}${extraCuts ? ' · extra cuts' : ''}` : 'None'}</dd></div>
           </dl>
 
           <div className="ps-route" aria-label="What you will get">

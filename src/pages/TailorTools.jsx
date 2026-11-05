@@ -10,6 +10,9 @@ import {toDataUrl} from '../imageTools.js';
 import {computeLayout,placedShape,layoutSvg} from './tailor/cutting.js';
 import {splitPiece,spreadPiece,presetLine} from './tailor/manipulate.js';
 import {allResults,edgeOptions} from './tailor/seams.js';
+import {pieceNo,parseOutlineSvg,planOps} from './tailor/importPlan.js';
+import {lengthenPiece,widenPiece,versionOps} from './tailor/lengthen.js';
+import {roleOf} from './tailor/garment3d.js';
 import {PRINTS,printById,tileOf} from './tailor/fabrics.js';
 import './tailor-tools.css';
 
@@ -67,6 +70,7 @@ export default function TailorTools({setPage}){
  const toast=useToast();
  const [boards,setBoards]=useState([]),[board,setBoard]=useState(null),[ops,setOps]=useState([]),[tool,setTool]=useState('select'),[selected,setSelected]=useState(null),[projects,setProjects]=useState([]),[projectId,setProjectId]=useState(''),[ai,setAi]=useState(null),[request,setRequest]=useState('Check the construction, seam placement, allowances and stitch sequence for this pattern.'),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false),[unit,setUnit]=useState('cm'),[zoom,setZoom]=useState(100),[tab,setTab]=useState('design'),[checked,setChecked]=useState([]),[snap,setSnap]=useState(true),[showSA,setShowSA]=useState(true),[hist,setHist]=useState({past:[],future:[]});
  const [style,setStyle]=useState(DEFAULT_STYLE),[garmentFabric,setGarmentFabric]=useState(DEFAULT_FABRIC),[fabricOn,setFabricOn]=useState(false),[fabTarget,setFabTarget]=useState('garment'),[customSeams,setCustomSeams]=useState([]),[highlight,setHighlight]=useState([]),[tryingOn,setTryingOn]=useState(false),[libFabrics,setLibFabrics]=useState([]),[pairDraft,setPairDraft]=useState({pa:'',ka:'',pb:'',kb:'',type:'seam'}),[meas,setMeas]=useState(DEFAULT_MEAS),[photo,setPhoto]=useState(null),[fab,setFab]=useState({w:150,allow:true,rotate:false,extra:5}),[stitch,setStitch]=useState(null),[sewDone,setSewDone]=useState([]),[cutAi,setCutAi]=useState(null),[busyKind,setBusyKind]=useState('');
+ const [lenForm,setLenForm]=useState({mode:'add',value:'',at:.6,flare:true,group:true,hem:true}),[planCm,setPlanCm]=useState(40),planRef=useRef(null),[verSel,setVerSel]=useState({Mini:false,Knee:true,Midi:true,Maxi:false}),[verLen,setVerLen]=useState({Mini:45,Knee:60,Midi:80,Maxi:105}),[verBusy,setVerBusy]=useState(false);
  const opsRef=useRef(ops),histRef=useRef(hist),cursorRef=useRef(null),areaRef=useRef(null),fileRef=useRef(null),swatchRef=useRef(null);
  opsRef.current=ops;histRef.current=hist;
 
@@ -139,7 +143,15 @@ export default function TailorTools({setPage}){
  /* boards */
  const create=async()=>{try{const d=await api('/api/tailor-tools/boards',{method:'POST',body:JSON.stringify({name:'Tailor Board',projectId:projectId||null,unit})});setBoards(b=>[d.board,...b]);applyBoard(d.board)}catch(e){toast.error(e.message)}};
  const layersPayload=()=>[...(photo?.src?[{type:'photo',...photo}]:[]),{type:'measurements',values:meas},{type:'style',values:style},{type:'fabric',value:garmentFabric,on:fabricOn},{type:'seams',items:customSeams}];
- const save=async()=>{if(!board)return create();setSaving(true);try{const d=await api(`/api/tailor-tools/boards/${board.id}`,{method:'PUT',body:JSON.stringify({operations:ops,layers:layersPayload(),projectId:projectId||board.projectId||null,unit,aiContext:ai||{}})});setBoard(d.board);setBoards(bs=>bs.map(x=>x.id===d.board.id?d.board:x));toast.success('Tailor board saved.')}catch(e){toast.error(e.message)}finally{setSaving(false)}};
+ /* Save the current board (creating it first if this is an unsaved draft) and return the saved board. */
+ const persist=async()=>{
+  let b=board;
+  if(!b){const d=await api('/api/tailor-tools/boards',{method:'POST',body:JSON.stringify({name:'Tailor Board',projectId:projectId||null,unit})});b=d.board}
+  const d=await api(`/api/tailor-tools/boards/${b.id}`,{method:'PUT',body:JSON.stringify({operations:ops,layers:layersPayload(),projectId:projectId||b.projectId||null,unit,aiContext:ai||{}})});
+  setBoard(d.board);setBoards(bs=>bs.some(x=>x.id===d.board.id)?bs.map(x=>x.id===d.board.id?d.board:x):[d.board,...bs]);return d.board;
+ };
+ const save=async()=>{setSaving(true);try{await persist();toast.success(projectId?'Saved to the linked project.':'Tailor board saved.')}catch(e){toast.error(e.message)}finally{setSaving(false)}};
+ const exportSvg=async()=>{setSaving(true);try{const b=await persist();downloadFile(`${API}/api/tailor-tools/boards/${b.id}/export.svg`,`${(b.name||'tailor-board').replace(/\s+/g,'-')}.svg`)}catch(e){toast.error(e.message)}finally{setSaving(false)}};
  const loadBoard=id=>{const b=boards.find(x=>x.id===id);if(b)applyBoard(b)};
 
  /* blocks */
@@ -220,7 +232,7 @@ export default function TailorTools({setPage}){
 
  /* try the garment on a real fit model: save the board, then hand it to the Fit Models page */
  const tryOn=async()=>{
-  if(!ops.some(o=>o.type==='piece'&&o.block&&/^(bodice|skirt)/.test(o.block.id)))return toast.info('Add a bodice, blouse, dress or skirt from the Design tab first. Trousers and hand-drawn pieces can\'t be shown on the model yet.');
+  if(!ops.some(o=>o.type==='piece'&&/^(bodice|skirt)/.test(roleOf(o)||'')))return toast.info('Add a bodice, blouse, dress or skirt from the Design tab, or import a Fabric Now plan, first. Trousers and hand-drawn pieces can\'t be shown on the model yet.');
   setTryingOn(true);
   try{
    let b=board;
@@ -231,6 +243,76 @@ export default function TailorTools({setPage}){
    if(setPage)setPage('fit-models');else toast.success('Saved. Open Fit Models to try it on.');
   }catch(e){toast.error(e.message)}finally{setTryingOn(false)}
  };
+
+ /* import a Fabric Now plan (piece_NN_outline.svg files) */
+ const onPlanFiles=async e=>{
+  const files=[...(e.target.files||[])].filter(f=>/\.svg$/i.test(f.name));e.target.value='';
+  if(!files.length)return toast.info('Choose the piece_01_outline.svg ... piece_21_outline.svg files from the svg_outline folder.');
+  const real=Number(planCm);if(!(real>0))return toast.info('Type the real length of the front skirt panel first.');
+  try{
+   files.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+   const items=[];
+   for(let i=0;i<files.length;i++){const pts=parseOutlineSvg(await files[i].text());if(pts)items.push({n:pieceNo(files[i].name)||i+1,pts})}
+   if(!items.length)return toast.error('Could not read any outlines from those files. Use the files in the svg_outline folder.');
+   const hOf=it=>Math.max(...it.pts.map(p=>p[1]))-Math.min(...it.pts.map(p=>p[1]));
+   const ref=items.find(i=>i.n===5)||items.reduce((a,b)=>hOf(b)>hOf(a)?b:a);
+   const res=planOps(items,real/hOf(ref),opsRef.current);
+   addOps(res);toast.success(`Imported ${items.length} pieces. The ${ref.n===5?'front skirt panel':'tallest piece'} is set to ${fmt(real,unit)}. Select a skirt panel to lengthen it.`);
+  }catch(err){toast.error('Could not import those files.')}
+ };
+
+ /* lengthen / shorten the selected piece by a measurement */
+ const applyLength=()=>{
+  const p=ops.find(o=>o.id===selected&&o.type==='piece');if(!p)return toast.info('Click a pattern piece first.');
+  const raw=parseFloat(lenForm.value);if(!isFinite(raw))return toast.info('Type a length first.');
+  const r=lengthenPiece(opsRef.current,p.id,{mode:lenForm.mode,value:fromUnit(raw,unit),at:lenForm.at,flare:lenForm.flare});
+  if(r.error)return toast.info(r.error);
+  let out=r.ops;
+  if(lenForm.group&&p.plan?.grow)opsRef.current.filter(o=>o.type==='piece'&&o.plan?.grow&&o.id!==p.id).forEach(o=>{const q=lengthenPiece(out,o.id,{mode:'add',value:r.delta,at:lenForm.at,flare:lenForm.flare});if(!q.error)out=q.ops});
+  if(lenForm.hem&&p.plan?.grow&&lenForm.flare&&r.delta>0){
+   const np=out.find(o=>o.id===p.id),ratio=bbox(np.points).w/bbox(p.points).w,hf=out.find(o=>o.plan?.n===21);
+   if(hf&&ratio>1.001)out=out.map(o=>o.id===hf.id?widenPiece(o,ratio):o);
+  }
+  commit(out);
+  toast.success(`${p.name} is now ${fmt(r.length,unit)} long (${r.delta>=0?'+':''}${num(r.delta,unit)} ${unit}).${lenForm.group&&p.plan?.grow?' Other skirt panels changed by the same amount.':''}`);
+ };
+ const lengthUI=selPiece?<div className="tt-lengthen">
+  <div className="tt-sub">Lengthen or shorten</div>
+  <div className="tt-field"><label>Current length</label><b>{num(bbox(selPiece.points).h,unit)} {unit}</b></div>
+  <div className="tt-seg tt-seg-wide"><button className={lenForm.mode==='add'?'on':''} onClick={()=>setLenForm(f=>({...f,mode:'add'}))}>Add / remove</button><button className={lenForm.mode==='set'?'on':''} onClick={()=>setLenForm(f=>({...f,mode:'set'}))}>Make it exactly</button></div>
+  <div className="tt-field"><label>{lenForm.mode==='add'?`Change by (${unit}). Negative shortens`:`New length (${unit})`}</label><input type="number" step={unit==='mm'?1:.5} value={lenForm.value} placeholder={lenForm.mode==='add'?'e.g. 10':num(bbox(selPiece.points).h,unit)} onChange={e=>setLenForm(f=>({...f,value:e.target.value}))} onKeyDown={e=>{if(e.key==='Enter')applyLength()}}/></div>
+  {lenForm.mode==='add'&&<div className="tt-chips">{[2,5,10,15,20].map(c=><button key={c} onClick={()=>setLenForm(f=>({...f,value:num(c,unit)}))}>+{num(c,unit)} {unit}</button>)}</div>}
+  <div className="tt-field"><label>Add the length</label><select value={lenForm.at} onChange={e=>setLenForm(f=>({...f,at:+e.target.value}))}><option value={0.85}>Near the hem</option><option value={0.6}>Lower part</option><option value={0.4}>Middle</option><option value={0.2}>Near the top</option></select></div>
+  <label className="tt-check"><input type="checkbox" checked={lenForm.flare} onChange={e=>setLenForm(f=>({...f,flare:e.target.checked}))}/> Keep the flare (sides keep their angle)</label>
+  {selPiece.plan?.grow&&<><label className="tt-check"><input type="checkbox" checked={lenForm.group} onChange={e=>setLenForm(f=>({...f,group:e.target.checked}))}/> Change front and back skirt panels together</label>
+  <label className="tt-check"><input type="checkbox" checked={lenForm.hem} onChange={e=>setLenForm(f=>({...f,hem:e.target.checked}))}/> Widen the hem facing to match</label></>}
+  <button className="btn btn-primary btn-sm" onClick={applyLength}><Ruler size={14}/> Apply length</button>
+  <p className="tt-note">Everything below the cut line slides down. Shortening trims from the hem with a straight cut, so re-curve the hem afterwards if you need to.</p>
+ </div>:null;
+
+ /* extra dress formats: each chosen length is saved as its own board, so it can be cut, downloaded and tried on separately */
+ const hasPlan=ops.some(o=>o.type==='piece'&&o.plan?.grow);
+ const saveVersions=async()=>{
+  const picks=Object.keys(verSel).filter(k=>verSel[k]);if(!picks.length)return toast.info('Tick at least one dress length.');
+  setVerBusy(true);
+  try{
+   const base=await persist(),made=[];
+   for(const label of picks){
+    const r=versionOps(opsRef.current,{length:verLen[label],at:lenForm.at,flare:lenForm.flare});
+    if(r.error){toast.info(`${label}: ${r.error}`);continue}
+    const c=await api('/api/tailor-tools/boards',{method:'POST',body:JSON.stringify({name:`${base.name||'Tailor Board'} · ${label} ${num(verLen[label],unit)}${unit}`,projectId:projectId||base.projectId||null,unit})});
+    const d=await api(`/api/tailor-tools/boards/${c.board.id}`,{method:'PUT',body:JSON.stringify({operations:r.ops,layers:layersPayload(),projectId:projectId||base.projectId||null,unit})});
+    made.push(d.board);
+   }
+   if(made.length){setBoards(bs=>[...made,...bs]);toast.success(`Saved ${made.length} extra version${made.length>1?'s':''} as separate boards. Switch between them in the board menu above the canvas.`)}
+  }catch(e){toast.error(e.message)}finally{setVerBusy(false)}
+ };
+ const versionsUI=hasPlan?<div className="tt-versions">
+  <div className="tt-sub">Extra dress formats (cut as additional)</div>
+  <p className="tt-note">Skirt length from the waist. Each tick is saved as its own board with its own cut pieces, ready to download or try on.</p>
+  {Object.keys(verLen).map(k=><div className="tt-field" key={k}><label className="tt-check"><input type="checkbox" checked={!!verSel[k]} onChange={e=>setVerSel(v=>({...v,[k]:e.target.checked}))}/> {k}</label><input type="number" min="5" step={unit==='mm'?1:.5} value={Number(toUnit(verLen[k],unit).toFixed(1))} onChange={e=>{const v=fromUnit(parseFloat(e.target.value),unit);if(v>0)setVerLen(l=>({...l,[k]:v}))}} aria-label={`${k} length in ${unit}`}/></div>)}
+  <button className="btn btn-ghost btn-sm" onClick={saveVersions} disabled={verBusy}><Copy size={13}/> {verBusy?'Saving versions…':'Save selected as extra boards'}</button>
+ </div>:null;
 
  /* seam checks */
  const seamResults=useMemo(()=>allResults(ops,customSeams,unit),[ops,customSeams,unit]);
@@ -285,7 +367,7 @@ export default function TailorTools({setPage}){
    </div>
    <div className="tt-actions">
     <button className="btn btn-ghost" onClick={create}><Plus size={15}/> New board</button>
-    {board&&<button className="btn btn-ghost" onClick={()=>downloadFile(`${API}/api/tailor-tools/boards/${board.id}/export.svg`,`${(board.name||'tailor-board').replace(/\s+/g,'-')}.svg`)}><Download size={15}/> Export SVG</button>}
+    <button className="btn btn-ghost" onClick={exportSvg} disabled={saving||!ops.length} title="Saves the board, then downloads every piece at real size (1 unit = 1 cm)"><Download size={15}/> Save &amp; download SVG</button>
     <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?<Sparkles size={15}/>:<Save size={15}/>} {saving?'Saving…':'Save board'}</button>
    </div>
   </header>
@@ -371,6 +453,8 @@ export default function TailorTools({setPage}){
        <div className="tt-field"><label>Size</label><b>{num(sb.w,unit)} × {num(sb.h,unit)} {unit}</b></div>
        <div className="tt-field"><label>Fabric</label><b>{selectedOp.fabric?'Custom print':'Garment fabric'}</b></div>
        <p className="tt-note">Double-click an edge to curve it. Shift-click to add a point. Alt-click a point to remove it.</p>
+       {lengthUI}
+       {versionsUI}
       </>}
       {selectedOp.type==='dart'&&<>
        <div className="tt-field"><label>Width ({unit})</label><input type="number" min="0" step={unit==='mm'?1:.1} value={Number(toUnit(selectedOp.w||3,unit).toFixed(2))} onFocus={push} onChange={e=>{const v=parseFloat(e.target.value);if(!isNaN(v))patch({w:Math.max(0,fromUnit(v,unit))})}}/></div>
@@ -386,6 +470,11 @@ export default function TailorTools({setPage}){
 
     {tab==='design'&&<div className="tt-panel">
      <div className="tt-panel-head"><div><strong>Design</strong><small>Start a garment, change its style, then reshape the pattern.</small></div></div>
+     <div className="tt-sub">Import a Fabric Now plan</div>
+     <input ref={planRef} type="file" accept=".svg,image/svg+xml" multiple hidden onChange={onPlanFiles}/>
+     <div className="tt-field"><label>Front skirt panel is ({unit}) long</label><input type="number" min="1" step={unit==='mm'?1:.5} value={Number(toUnit(planCm,unit).toFixed(1))} onChange={e=>{const v=fromUnit(parseFloat(e.target.value),unit);if(v>0)setPlanCm(v)}}/></div>
+     <button className="btn btn-ghost btn-sm" onClick={()=>planRef.current?.click()}><Upload size={13}/> Choose the outline files</button>
+     <p className="tt-note">Select all the piece_NN_outline.svg files from the svg_outline folder. The length above sets the real size for the whole plan, so measure the skirt panel on the actual dress first.</p>
      <div className="tt-sub">Start a garment</div>
      <div className="tt-cards">{STARTERS.map(s=><button key={s.id} onClick={()=>addStarter(s.id)}><Shapes size={16}/><b>{s.label}</b><small>{s.blocks.length} pieces</small></button>)}</div>
      <div className="tt-sub">Single pieces</div>
@@ -406,6 +495,8 @@ export default function TailorTools({setPage}){
      <div className="tt-chips"><button onClick={()=>applyPreset('princess')}>Princess seam</button><button onClick={()=>applyPreset('yoke')}>Yoke</button><button onClick={()=>applyPreset('panel')}>Panel seam</button></div>
      <p className="tt-note">Select a piece first for the seam buttons. Double-click an edge of a selected piece to curve it. Shift-click an edge to add a point. Alt-click a point to remove it.</p>
 
+     {lengthUI||<p className="tt-note">Click a pattern piece to lengthen or shorten it by a measurement.</p>}
+     {versionsUI}
      <div className="tt-sub">Measurements ({unit}) <span className="tt-sizes">{Object.keys(SIZES).map(s=><button key={s} onClick={()=>setMeas(m=>({...m,...SIZES[s]}))}>{s}</button>)}</span></div>
      <div className="tt-meas">{MEAS_FIELDS.map(([k,l])=><label key={k}><span>{l}</span><input type="number" step={unit==='mm'?1:.5} value={Number(toUnit(meas[k],unit).toFixed(1))} onChange={e=>setMeasure(k,e.target.value)}/></label>)}</div>
      <div className="tt-row">{hasBlocks&&<button className="btn btn-ghost btn-sm" onClick={rebuildBlocks}>Rebuild pieces from measurements</button>}{projectId&&<button className="btn btn-ghost btn-sm" onClick={useProjectMeas}>Use project measurements</button>}</div>

@@ -18,7 +18,10 @@ function widthAt(p,ly){
  const maxX=Math.max(...xs),minX=Math.min(...xs),fold=Math.min(...p.points.map(q=>q[0]));
  return p.fold?2*(maxX-fold)*(p.cut||1):(maxX-minX)*(p.cut||1);
 }
-const one=(ops,id)=>ops.find(o=>o.type==='piece'&&o.block?.id===id);
+/* Pieces imported from a Fabric Now plan have no block id, so map them by their number on the sheet. */
+const PLAN_ROLE={1:'bodice-front',2:'bodice-back',5:'skirt-front',6:'skirt-back'};
+export const roleOf=o=>o.block?.id||(o.plan?PLAN_ROLE[o.plan.n]:undefined);
+const one=(ops,id)=>ops.find(o=>o.type==='piece'&&roleOf(o)===id);
 const yRange=p=>{const ys=p.points.map(q=>q[1]),t=Math.min(...ys);return [0,Math.max(...ys)-t]};
 const sample=(y0,y1,n,f)=>Array.from({length:n+1},(_,i)=>{const y=y0+(y1-y0)*i/n;return {h:y-y0,C:f(Math.min(y,y1-1e-3))}});
 
@@ -41,6 +44,8 @@ export function buildProfile(ops){
    rings=Array.from({length:n+1},(_,i)=>{const t=i/n;return {h:H*t,C:2*Math.PI*(r+(R-r)*t)}});
   }else{
    rings=sample(y0,y1,n,y=>skirts.reduce((t,p)=>t+widthAt(p,y),0));
+   // a curved or slanted hem makes the very last rows of the outline collapse to almost nothing; hold the last full width instead of pinching the skirt shut
+   for(let i=1;i<rings.length;i++)if(rings[i].C<rings[i-1].C*.8)rings[i]={...rings[i],C:rings[i-1].C};
    const top=rings[0].C,ref=waistC||top;
    if(top>ref*1.25){ // gathered: hangs from the waist, then opens up
     const hemC=rings[rings.length-1].C;rings=rings.map((r,i)=>{const t=i/n,k=t*t*(3-2*t);return {h:r.h,C:ref*1.05+(hemC-ref*1.05)*Math.min(1,k*1.15)}});notes.push('Gathered skirt shown hanging from the waist.');
