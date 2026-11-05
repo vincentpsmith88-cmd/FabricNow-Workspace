@@ -33,7 +33,7 @@
 /* Canvas */
 .tt-canvas-area{position:relative;flex:1;min-height:0;
  background:radial-gradient(circle,rgba(120,120,160,.22) 1px,transparent 1.2px) 0 0/20px 20px,var(--bg)}
-.tt-board-wrap{position:absolute;inset:0;display:flex;padding:18px 84px;overflow:auto}
+.tt-board-wrap{position:absolute;inset:0;display:flex;padding:18px var(--tt-rr,84px) 18px var(--tt-rl,84px);overflow:auto}
 .tt-board{flex:none;margin:auto;max-width:none;background:var(--tt-paper);color:#2A2740;border-radius:6px;cursor:crosshair;
  box-shadow:0 1px 2px rgba(20,18,40,.1),0 24px 60px -12px rgba(20,18,40,.28),0 0 0 1px rgba(20,18,40,.06);transition:width .15s var(--ease),height .15s var(--ease)}
 .tt-piece{fill:rgba(230,98,57,.09);stroke:currentColor;stroke-width:.8;transition:fill .15s}
@@ -145,7 +145,7 @@
 .tt-fold{stroke:currentColor;stroke-width:.4;opacity:.7;pointer-events:none}.tt-fold-label{fill:currentColor;opacity:.55;letter-spacing:.2px;pointer-events:none}
 .tt-trace circle{fill:#fff;stroke:#E66239;stroke-width:.5}.tt-trace circle.first{fill:#E66239}.tt-trace polyline{stroke:#E66239}
 .tool-trace,.tool-calibrate{cursor:crosshair}.tool-photo{cursor:grab}
-.tt-start{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;width:min(380px,calc(100% - 200px));padding:22px;border-radius:22px;text-align:center;background:var(--glass,rgba(255,255,255,.88));backdrop-filter:blur(16px);border:1px solid var(--tt-line);box-shadow:var(--shadow-lg)}
+.tt-start{position:absolute;left:calc(50% + (var(--tt-rl,84px) - var(--tt-rr,84px))/2);top:50%;transform:translate(-50%,-50%);z-index:4;width:min(380px,calc(100% - var(--tt-rl,84px) - var(--tt-rr,84px) - 24px));padding:22px;border-radius:22px;text-align:center;background:var(--glass,rgba(255,255,255,.88));backdrop-filter:blur(16px);border:1px solid var(--tt-line);box-shadow:var(--shadow-lg)}
 .tt-start h3{margin:0 0 4px;font-size:1.1rem}.tt-start p{margin:0 0 14px;font-size:.84rem;color:var(--muted);line-height:1.5}.tt-start small{display:block;margin-top:12px;font-size:.74rem;color:var(--muted)}
 .tt-start-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tt-start-grid button{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:14px;font-weight:800;font-size:.9rem;color:#fff;background:var(--grad-brand);box-shadow:0 8px 18px -8px rgba(196,74,29,.6);transition:transform .15s}
@@ -339,3 +339,10 @@ body.tt-resizing{cursor:col-resize;user-select:none}
 @media(max-width:1280px){.tt-resize,.tt-focus-btn{display:none}.tt-focus .tt-side{display:flex}.tt-focus .tt-hero-copy{display:flex}}
 @media(max-width:1500px){.tt-focus-btn span{display:none}}
 .fp-grid{max-height:clamp(260px,46dvh,620px)}
+
+/* Keep the board clear of both tool strips. The strips become two columns on shorter screens (laptops),
+   so the space reserved on each side grows with them instead of the strips sitting on top of the board. */
+@media(min-width:1101px) and (max-height:900px){.tt-canvas-area{--tt-rl:126px}}
+@media(min-width:701px) and (max-height:900px){.tt-canvas-area{--tt-rr:118px}}
+@media(min-width:1101px) and (max-height:760px){.tt-canvas-area{--tt-rl:122px;--tt-rr:110px}}
+@media(max-width:1100px){.tt-start{width:min(380px,calc(100% - 40px));left:50%}}
