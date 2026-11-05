@@ -229,7 +229,7 @@ function createRuntime(el, M, cb) {
     try {
       const body = bodyData();
       if (!body) { cb.onGarmentInfo?.({ status: 'error', message: "This model's body could not be measured, so the garment can't be fitted." }); return; }
-      const fit = fitGarment(garmentSpec.profile, body, { heightCm: currentCm, meas: garmentSpec.meas, patternHeightCm: garmentSpec.patternHeightCm });
+      const fit = fitGarment(garmentSpec.profile, body, { heightCm: currentCm, meas: garmentSpec.meas, patternHeightCm: garmentSpec.patternHeightCm, style: garmentSpec.style });
       const group = new THREE.Group();
       for (const m of fit.meshes) {
         const f = garmentSpec.fabrics[m.kind] || garmentSpec.fabrics.torso || garmentSpec.fabrics.skirt;

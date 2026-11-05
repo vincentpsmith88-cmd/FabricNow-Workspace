@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Box, Camera, Check, FileBox, Lightbulb, Maximize2, Minimize2, Moon, Rotate3D, Ruler, Scissors, Search, Shirt, Sun } from 'lucide-react';
 import { api } from '../api.js';
 import { buildProfile } from './tailor/garment3d.js';
+import { styleFromProfile, cleanStyle } from '../components/garmentFit.js';
 import { withPath } from './tailor/geometry.js';
 import { PRINTS, printById, tileOf, tileSvg } from './tailor/fabrics.js';
 import './fit-garment.css';
@@ -77,9 +78,36 @@ export default function FitModels({ setPage }) {
       const piece = ops.find((o) => o.id === t.pieceId), f = print || piece?.fabric || boardFabric, tile = tileOf(f);
       fabrics[t.kind] = { svg: tileSvg(f, 24), tile: [tile.w, tile.h], scale: f.scale || 100, rot: f.rot || 0 };
     }
-    return { profile, fabrics, meas: { bust: meas.bust || 92, waist: meas.waist || 74, hip: meas.hip || 98 }, patternHeightCm: 172 };
+    const m = { bust: meas.bust || 92, waist: meas.waist || 74, hip: meas.hip || 98 };
+    /* a short plain description of the pattern for the AI stylist (it never sees or moves any geometry) */
+    const r = (n) => Math.round(n), sk = profile.tubes.find((t) => t.kind === 'skirt'), to = profile.tubes.find((t) => t.kind === 'torso');
+    const fabricNames = [...new Set(profile.tubes.map((t) => { const piece = ops.find((o) => o.id === t.pieceId), f = print || piece?.fabric || boardFabric; return f.src ? 'photo of a real fabric' : printById(f.id).name; }))];
+    const summary = {
+      pieces: ops.filter((o) => o.type === 'piece').map((o) => o.name).slice(0, 12),
+      measurementsCm: { bust: m.bust, waist: m.waist, hip: m.hip },
+      bodice: to ? { topCircumferenceCm: r(to.rings[0].C), waistCircumferenceCm: r(to.rings[to.rings.length - 1].C) } : null,
+      skirt: sk ? { lengthCm: r(sk.rings[sk.rings.length - 1].h), topCircumferenceCm: r(sk.rings[0].C), hemCircumferenceCm: r(sk.rings[sk.rings.length - 1].C), hemToHipRatio: +(sk.rings[sk.rings.length - 1].C / m.hip).toFixed(2) } : null,
+      fabric: fabricNames,
+    };
+    return { profile, fabrics, meas: m, patternHeightCm: 172, summary, baseStyle: styleFromProfile(profile, m) };
   }, [board, print]);
-  const wearable = wear && garment && !garment.unsupported ? garment : null;
+
+  /* The AI stylist picks how the garment hangs (silhouette, ease, folds). Until it answers, or if it cannot, the pattern-based defaults are used. */
+  const [aiStyle, setAiStyle] = useState(null);
+  React.useEffect(() => {
+    setAiStyle(null);
+    if (!wear || !garment || garment.unsupported) return;
+    const key = JSON.stringify(garment.summary);
+    let h = 0; for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+    const ck = 'fabricnow.drape.' + h;
+    try { const hit = JSON.parse(sessionStorage.getItem(ck) || 'null'); if (hit) { setAiStyle(hit); return; } } catch { /* ignore */ }
+    let dead = false;
+    api('/api/tailor-tools/drape-style', { method: 'POST', body: JSON.stringify({ summary: garment.summary }) })
+      .then((d) => { if (dead || !d?.style) return; const st = cleanStyle(d.style, garment.baseStyle); try { sessionStorage.setItem(ck, JSON.stringify(st)); } catch { /* ignore */ } setAiStyle(st); })
+      .catch(() => {});
+    return () => { dead = true; };
+  }, [garment, wear]);
+  const wearable = useMemo(() => (wear && garment && !garment.unsupported ? { ...garment, style: aiStyle || garment.baseStyle } : null), [wear, garment, aiStyle]);
   React.useEffect(() => { if (!wearable) setInfo({ status: 'none' }); }, [wearable]);
   const pickPrint = (id) => setPrint({ id, colors: printById(id).colors.slice(), scale: print?.scale || 100, rot: print?.rot || 0 });
 

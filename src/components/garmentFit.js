@@ -87,11 +87,46 @@ function interpRing(rings,y){
 }
 const ss=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
 
+
+/* ---------- drape style ----------
+   How the garment hangs, as a few safe numbers. They come from the pattern itself (styleFromProfile) and can be
+   refined by the AI stylist on the server (cleanStyle clamps whatever comes back, so the cloth can never go inside the body). */
+const clampN=(v,a,b,d)=>{const n=Number(v);return Number.isFinite(n)?Math.min(b,Math.max(a,n)):d};
+export const SILHOUETTES=['pencil','a-line','gathered','flared'];
+export function styleFromProfile(profile,meas={hip:98}){
+ const sk=profile?.tubes?.find(t=>t.kind==='skirt'),full=sk?sk.rings[sk.rings.length-1].C/(meas.hip||98):1;
+ const base=full<=1.1?{silhouette:'pencil',roundness:.3,hemFlare:0,foldCount:0,foldDepth:0}
+  :full<=1.5?{silhouette:'a-line',roundness:.6,hemFlare:.02,foldCount:0,foldDepth:.015}
+  :full<=2.5?{silhouette:'gathered',roundness:.85,hemFlare:.04,foldCount:8,foldDepth:.035}
+  :{silhouette:'flared',roundness:1,hemFlare:.06,foldCount:10,foldDepth:.05};
+ return {...base,easeBust:.04,easeWaist:.03,easeHip:.03};
+}
+export function cleanStyle(raw,base){
+ const r=raw&&typeof raw==='object'?raw:{},b=base||styleFromProfile(null);
+ return {
+  silhouette:SILHOUETTES.includes(r.silhouette)?r.silhouette:b.silhouette,
+  roundness:clampN(r.roundness,0,1,b.roundness),
+  hemFlare:clampN(r.hemFlare,0,.25,b.hemFlare),
+  foldCount:Math.round(clampN(r.foldCount,0,16,b.foldCount)),
+  foldDepth:clampN(r.foldDepth,0,.08,b.foldDepth),
+  easeBust:clampN(r.easeBust,.02,.15,b.easeBust),
+  easeWaist:clampN(r.easeWaist,.02,.15,b.easeWaist),
+  easeHip:clampN(r.easeHip,.02,.2,b.easeHip)
+ };
+}
+/* Closes dips between neighbouring angles (never pulls a point inwards), so a skirt below the hip becomes one smooth shape instead of following each leg. */
+function angSmooth(a,passes){
+ let cur=Float32Array.from(a);
+ for(let p=0;p<passes;p++){const o=new Float32Array(K);for(let j=0;j<K;j++)o[j]=Math.max(a[j],cur[(j+K-1)%K]*.25+cur[j]*.5+cur[(j+1)%K]*.25);cur=o}
+ return cur;
+}
+
 /* profile: {tubes:[{kind:'torso'|'skirt',pieceId,top,rings:[{h,C}]}]} from the pattern (cm).
    meas: the pattern's own body measurements (bust, waist, hip) so ease can be kept in proportion.
    heightCm: the model's height; patternHeightCm: the height the pattern was drafted for. */
 export {contour,clusterSlice};
-export function fitGarment(profile,body,{heightCm,meas={bust:92,waist:74,hip:98},patternHeightCm=172}={}){
+export function fitGarment(profile,body,{heightCm,meas={bust:92,waist:74,hip:98},patternHeightCm=172,style=null}={}){
+ const st=cleanStyle(style,styleFromProfile(profile,meas));
  const L=body.landmarks,rings=smooth(body.rings,2),kLen=heightCm/patternHeightCm,margin=.0035;
  const hipRing=interpRing(rings,L.yH),meshes=[];
  const geometry=[];
@@ -109,7 +144,8 @@ export function fitGarment(profile,body,{heightCm,meas={bust:92,waist:74,hip:98}
   const radii=[],minR=[],centers=[],ys=[],pos=[],uv=[],idx=[];let vcm=tube.kind==='torso'?0:(L.yTop-L.yW)*heightCm;
   R.forEach((r,i)=>{
    const y=yOf(r.h);
-   let ratio=r.C/ref(r.h);ratio=tube.kind==='torso'&&r.h<=wH?Math.min(1.12,Math.max(1.03,ratio)):Math.max(1.03,ratio);
+   const ease=tube.kind==='torso'?lerp(st.easeBust,st.easeWaist,Math.min(1,r.h/Math.max(1e-6,wH))):lerp(st.easeWaist,st.easeHip,Math.min(1,r.h/20));
+   let ratio=r.C/ref(r.h);ratio=tube.kind==='torso'&&r.h<=wH?Math.min(1+ease+.09,Math.max(1+ease,ratio)):Math.max(1+ease,ratio);
    const base=y>=L.yH?interpRing(rings,y):hipRing; // below the hips the garment hangs from the hip ring
    let mean=0;for(let j=0;j<K;j++)mean+=base.env[j];mean/=K;
    let need=null;
@@ -124,6 +160,16 @@ export function fitGarment(profile,body,{heightCm,meas={bust:92,waist:74,hip:98}
    const circ=ss(1.25,2.6,ratio); // very full skirts open up into a circle
    const want=new Float32Array(K),lo=new Float32Array(K);
    for(let j=0;j<K;j++){want[j]=lerp(base.env[j]*ratio,mean*ratio,circ)+margin;lo[j]=(need?need[j]:0)+margin;want[j]=Math.max(want[j],lo[j])}
+   if(tube.kind==='skirt'){
+    const frac=i/Math.max(1,n-1),below=y<L.yH?(L.yH-y)*heightCm:0,round=st.roundness*ss(0,28,below);
+    if(round>0){ // a skirt hangs from the hip and rounds out as it falls; it does not wrap each thigh
+     let maxNeed=0;if(need)for(let j=0;j<K;j++)if(need[j]>maxNeed)maxNeed=need[j];
+     const target=Math.max(r.C/TAU/heightCm,maxNeed*1.02),sm=angSmooth(want,5);
+     for(let j=0;j<K;j++){const open=Math.max(want[j],lerp(sm[j],Math.max(sm[j],target),round));want[j]=open}
+    }
+    if(st.hemFlare>0){const k=1+st.hemFlare*ss(.35,1,frac);for(let j=0;j<K;j++)want[j]*=k}
+    if(st.foldCount>0&&st.foldDepth>0){const amp=st.foldDepth*ss(.12,1,frac);for(let j=0;j<K;j++)want[j]*=1+amp*(.5+.5*Math.cos(st.foldCount*(j/K*TAU)+frac*.9))} // folds only push outwards, never into the body
+   }
    radii.push(want);minR.push(lo);centers.push([base.cx,base.cz]);ys.push(y);
   });
   // smooth along the height so the silhouette has no steps, but never go inside the body's clearance
@@ -142,5 +188,5 @@ export function fitGarment(profile,body,{heightCm,meas={bust:92,waist:74,hip:98}
  const notes=[];
  const rh=per.hip/meas.hip;
  if(Math.abs(rh-1)>.12)notes.push(`This model's hips are about ${Math.round(Math.abs(rh-1)*100)}% ${rh>1?'larger':'smaller'} than the pattern's size, so the garment was resized to fit the body. Use the matching size when you draft.`);
- return {meshes,notes,landmarks:L,measuredCm:per};
+ return {meshes,notes,landmarks:L,measuredCm:per,style:st};
 }
