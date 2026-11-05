@@ -14,6 +14,7 @@ import {pieceNo,parseOutlineSvg,planOps} from './tailor/importPlan.js';
 import {lengthenPiece,widenPiece,versionOps} from './tailor/lengthen.js';
 import {roleOf} from './tailor/garment3d.js';
 import {PRINTS,printById,tileOf} from './tailor/fabrics.js';
+import FabricPicker from './tailor/FabricPicker.jsx';
 import './tailor-tools.css';
 
 const TOOLS=[
@@ -507,9 +508,7 @@ export default function TailorTools({setPage}){
      <div className="tt-panel-head"><div><strong>Fabric</strong><small>See a print on your pattern pieces, then on a 3D form.</small></div></div>
      <input ref={swatchRef} type="file" accept="image/*" hidden onChange={onSwatchFile}/>
      <div className="tt-seg tt-seg-wide"><button className={fabTarget==='garment'?'on':''} onClick={()=>setFabTarget('garment')}>Whole garment</button><button className={fabTarget==='piece'?'on':''} disabled={!selPiece} onClick={()=>setFabTarget('piece')}>{selPiece?`Only ${selPiece.name}`:'Selected piece'}</button></div>
-     <div className="tt-prints">{PRINTS.map(p=>{const t=tileOf({id:p.id});return <button key={p.id} className={activeFabric.id===p.id?'on':''} onClick={()=>setFabric({id:p.id})} title={p.name}><svg viewBox={`0 0 ${t.w*2} ${t.h*2}`} preserveAspectRatio="xMidYMid slice"><g dangerouslySetInnerHTML={{__html:t.markup+`<g transform="translate(${t.w} 0)">${t.markup}</g><g transform="translate(0 ${t.h})">${t.markup}</g><g transform="translate(${t.w} ${t.h})">${t.markup}</g>`}}/></svg><span>{p.name}</span></button>})}
-      <button className={activeFabric.src?'on':''} onClick={()=>swatchRef.current?.click()}><div className="tt-print-up"><Upload size={18}/></div><span>Your fabric photo</span></button></div>
-     {libFabrics.length>0&&<><div className="tt-sub">From your Fabric Library</div><div className="tt-libfab">{libFabrics.map(f=><button key={f.id} className={activeFabric.name===f.name&&activeFabric.src?'on':''} onClick={()=>pickLibFabric(f)} title={f.name}><img src={f.imageUrl} alt={f.name}/><span>{f.name}</span></button>)}</div></>}
+     <FabricPicker library={libFabrics} active={activeFabric} onPrint={id=>setFabric({id})} onLibrary={pickLibFabric} onUpload={()=>swatchRef.current?.click()}/>
      {!activeFabric.src&&<div className="tt-colors">{(activeFabric.colors?.length?activeFabric.colors:printById(activeFabric.id).colors).map((c,i)=><label key={i}><input type="color" value={c} onChange={e=>setFabColor(i,e.target.value)}/><span>Colour {i+1}</span></label>)}</div>}
      {activeFabric.src&&<div className="tt-field"><label>One repeat is ({unit})</label><input type="number" min="1" value={Number(toUnit(activeFabric.tile?.[0]||20,unit).toFixed(1))} onChange={e=>{const v=fromUnit(parseFloat(e.target.value),unit);if(v>0)setFabric({tile:[v,v]})}}/></div>}
      <div className="tt-field"><label>Print size</label><input type="range" min="40" max="300" value={activeFabric.scale||100} onChange={e=>setFabric({scale:+e.target.value})}/></div>
