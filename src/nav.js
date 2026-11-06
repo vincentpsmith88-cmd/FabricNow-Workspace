@@ -23,6 +23,7 @@ const fashionItems = [
 export const NAV_GROUPS = [
   { label:'Workspace', items:[
     {id:'overview',label:'Overview',icon:LayoutDashboard,sub:'Your garment automation at a glance.'},
+    {id:'fabric-studio',label:'FabricNow Studio',icon:Spline,sub:'Open the full 2D and 3D pattern-design workspace.'},
     {id:'studio',label:'Pattern Studio',icon:Scissors,sub:'Turn a garment photo into pattern assets.'},
     {id:'pattern-library',label:'Pattern Library',icon:Library,sub:'Flat sketches you can duplicate, or describe and let AI draw.'},
     {id:'tailor-tools',label:'Tailor Tools',icon:Scissors,sub:'Draw seams, measurements, darts, grainlines and stitch plans with AI guidance.'},

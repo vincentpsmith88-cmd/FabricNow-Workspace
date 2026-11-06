@@ -1,3 +1,7 @@
 {
-  "rewrites": [{ "source": "/((?!assets/|models/|brand-logos/|.*\\..*).*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/studios", "destination": "/api/studios/studio" },
+    { "source": "/studios/:path*", "destination": "/api/studios/:path*" },
+    { "source": "/((?!api/|assets/|models/|brand-logos/|.*\\..*).*)", "destination": "/index.html" }
+  ]
 }

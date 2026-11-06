@@ -25,6 +25,13 @@ Logo and favicon live in `public/logo-icon.svg` and `public/logo-icon.png`.
 ## Production
 `npm run build`, then deploy `dist/`. Never put Stripe secret keys or service-account JSON in this project.
 
+## FabricNow Studio on Vercel
+The full 2D/3D editor remains an independent app in `fabricnow - studio/seamer-studio-main`; the workspace opens it from the **FabricNow Studio** sidebar item. Deploy both apps as separate Vercel projects, then use the workspace project's `/studios/*` proxy to present them on the same domain.
+
+For the Studio Vercel project, use `fabricnow - studio/seamer-studio-main` as its root directory, set the install command to `pnpm --dir ../atelier install --frozen-lockfile && pnpm install --frozen-lockfile` (the editor links to packages in `atelier`), set `BASE_PATH=/studios`, and build with `pnpm build` (static output: `build`). Its `vercel.json` handles the `/studios/*` base path and static SPA fallback. For the workspace Vercel project, set the server-side `FABRIC_STUDIO_ORIGIN` environment variable to the Studio deployment origin, such as `https://your-studio-project.vercel.app` (no path or trailing slash), then redeploy. Do not expose this as a `VITE_` variable.
+
+For local development, run the Studio app on its configured port `4173` and the workspace on port `5173`; the workspace sidebar opens the local editor automatically. Visiting the Studio app's root URL redirects directly to its editor.
+
 ## AI Studio additions
 - Pattern Extraction preserves the Fabric Now Basic Plan export structure and adds `manifest.json` for piece names/cut counts.
 - Vision analysis supports OpenAI or Claude (`AI_VISION_PROVIDER=auto|openai|claude`).
