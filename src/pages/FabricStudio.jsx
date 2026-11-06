@@ -2,9 +2,7 @@ import React from 'react';
 import { ExternalLink, Scissors } from 'lucide-react';
 import './fabric-studio.css';
 
-const STUDIO_URL = import.meta.env.DEV
-  ? 'http://127.0.0.1:4173/studio'
-  : '/studios/studio';
+const STUDIO_URL = 'https://studios.fabricnow.pro';
 
 export default function FabricStudio() {
   return (
