@@ -304,7 +304,7 @@ export default function TailorTools({setPage}){
   }catch(e){toast.error(e.message)}finally{setTryingOn(false)}
  };
 
- /* import a Fabric Now plan (piece_NN_outline.svg files) */
+ /* Import Basic Plan / manual-request SVG outlines (piece_NN_outline.svg files). */
  const onPlanFiles=async e=>{
   const files=[...(e.target.files||[])].filter(f=>/\.svg$/i.test(f.name));e.target.value='';
   if(!files.length)return toast.info('Choose the piece_01_outline.svg ... piece_21_outline.svg files from the svg_outline folder.');
@@ -544,11 +544,11 @@ export default function TailorTools({setPage}){
 
     {tab==='design'&&<div className="tt-panel">
      <div className="tt-panel-head"><div><strong>Design</strong><small>Start a garment, change its style, then reshape the pattern.</small></div></div>
-     <div className="tt-sub">Import a Fabric Now plan</div>
+     <div className="tt-sub">Open SVG pattern files</div>
      <input ref={planRef} type="file" accept=".svg,image/svg+xml" multiple hidden onChange={onPlanFiles}/>
      <div className="tt-field"><label>Front skirt panel is ({unit}) long</label><input type="number" min="1" step={unit==='mm'?1:.5} value={Number(toUnit(planCm,unit).toFixed(1))} onChange={e=>{const v=fromUnit(parseFloat(e.target.value),unit);if(v>0)setPlanCm(v)}}/></div>
-     <button className="btn btn-ghost btn-sm" onClick={()=>planRef.current?.click()}><Upload size={13}/> Choose the outline files</button>
-     <p className="tt-note">Select all the piece_NN_outline.svg files from the svg_outline folder. The length above sets the real size for the whole plan, so measure the skirt panel on the actual dress first.</p>
+     <button className="btn btn-ghost btn-sm" onClick={()=>planRef.current?.click()}><Upload size={13}/> Open SVGs in Tailor Tools</button>
+     <p className="tt-note">Extract the ZIP you downloaded from Pattern Studio, open its svg_outline folder, then select the piece_NN_outline.svg files. Enter the measured front skirt panel length above to calibrate the full set at real-world scale. Imported pieces can then be inspected and edited on this Tailor board.</p>
      <div className="tt-sub">Start a garment</div>
      <div className="tt-cards">{STARTERS.map(s=><button key={s.id} onClick={()=>addStarter(s.id)}><Shapes size={16}/><b>{s.label}</b><small>{s.blocks.length} pieces</small></button>)}</div>
      <div className="tt-sub">Single pieces</div>

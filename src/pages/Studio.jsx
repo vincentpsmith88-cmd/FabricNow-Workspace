@@ -46,7 +46,7 @@ function Hero({ eyebrow, title, body, stage, actions }) {
   );
 }
 
-export default function Studio({ setPage }) {
+export default function Studio({ setPage, onUsageUpdate }) {
   const toast = useToast();
   const [file, setFile] = useState(null);
   const [swatch, setSwatch] = useState(null);
@@ -124,8 +124,8 @@ export default function Studio({ setPage }) {
       fd.append('variants', JSON.stringify({ formats, all: formats.length === ALL_FORMATS.length, extraCuts, note: formatNote.trim() }));
       const d = await api('/api/pattern-requests', { method: 'POST', body: fd });
       setRequest(d.request); localStorage.setItem('fabricnow.latestPatternRequest', d.request.id);
-      
-      toast.success('Garment request submitted.');
+      onUsageUpdate?.();
+      toast.success('Garment request submitted. One API usage unit has been recorded.');
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
@@ -203,7 +203,8 @@ export default function Studio({ setPage }) {
           {!completed && <p className="manual-leave-note">You can safely leave this page. Come back to your Workspace later to check whether your garment is ready.</p>}
           {request.adminNote && <div className="ps-result-strip">{request.adminNote}</div>}
           {completed && previewImages.length > 0 && <div className="manual-preview-grid">{previewImages.map((p, i) => <figure key={`${p.name}-${i}`}><img src={p.src} alt={p.name}/><figcaption>{p.name}</figcaption></figure>)}</div>}
-          {completed && <button className="ps-cta" type="button" onClick={downloadPattern} disabled={downloadBusy}><Download size={17}/>{downloadBusy ? 'Preparing download…' : 'Download pattern ZIP'}</button>}
+          {completed && <div className="manual-result-actions"><button className="ps-cta" type="button" onClick={downloadPattern} disabled={downloadBusy}><Download size={17}/>{downloadBusy ? 'Preparing download…' : 'Download pattern ZIP'}</button>{setPage && <button className="btn btn-ghost" type="button" onClick={() => setPage('tailor-tools')}><Scissors size={16}/> Open SVGs in Tailor Tools</button>}</div>}
+          {completed && <p className="manual-tailor-hint">To edit a pattern piece, extract the <strong>svg_outline</strong> folder from your ZIP, then choose its SVG files in Tailor Tools.</p>}
           <small className="manual-request-id">Request #{String(request.id).slice(-8)}</small>
         </section>
       </div>
