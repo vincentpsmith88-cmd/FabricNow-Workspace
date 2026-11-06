@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, Check, ExternalLink, FileOutput, ImagePlus, Layers3, Link2, Plus, RotateCcw, Ruler, Scissors, Sparkles, SlidersHorizontal } from 'lucide-react';
-import { api } from '../api.js';
+import { ArrowRight, CheckCircle2, Check, ExternalLink, FileOutput, ImagePlus, Layers3, Link2, Plus, RotateCcw, Ruler, Scissors, Sparkles, SlidersHorizontal, Coffee, Clock3, Download } from 'lucide-react';
+import { api, API, TOKEN_KEY } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { Segmented, Spinner } from '../components/ui.jsx';
 import { Dropzone, usePreview } from '../components/Dropzone.jsx';
-import { useCatalog } from '../components/GarmentSelect.jsx';
 import JobView from '../components/JobView.jsx';
 
 const LININGS = [{ value: 'none', label: 'None' }, { value: 'partial', label: 'Partial' }, { value: 'full', label: 'Full' }];
@@ -47,24 +46,24 @@ function Hero({ eyebrow, title, body, stage, actions }) {
   );
 }
 
-export default function Studio({ onDone, onJob, onDeleted, setPage }) {
+export default function Studio({ setPage }) {
   const toast = useToast();
-  const catalog = useCatalog();
   const [file, setFile] = useState(null);
   const [swatch, setSwatch] = useState(null);
-  const [garment] = useState('Auto-detect');
+  const [garment, setGarment] = useState('');
   const [lining, setLining] = useState('none');
   const [notes, setNotes] = useState('');
   const [formats, setFormats] = useState([]);
   const [extraCuts, setExtraCuts] = useState(true);
   const [formatNote, setFormatNote] = useState('');
   const [busy, setBusy] = useState(false);
-  const [secs, setSecs] = useState(0);
   const [error, setError] = useState('');
-  const [result, setResult] = useState(null);
   const [reference, setReference] = useState(null);
   const [referenceLoading, setReferenceLoading] = useState(false);
   const [referenceError, setReferenceError] = useState('');
+  const [request, setRequest] = useState(null);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [previewImages, setPreviewImages] = useState([]);
   const photo = usePreview(file);
   const fabric = usePreview(swatch);
 
@@ -89,15 +88,9 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    if (!busy) { setSecs(0); return undefined; }
-    const id = setInterval(() => setSecs((s) => s + 1), 1000);
-    return () => clearInterval(id);
-  }, [busy]);
-
   const reset = () => {
     setFile(null); setSwatch(null); setNotes(''); setLining('none'); setFormats([]); setFormatNote('');
-    setResult(null); setError('');
+    setError('');
   };
 
   const addIdea = (t) => setNotes((n) => {
@@ -106,7 +99,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
   });
 
   const toggleFormat = (f) => setFormats((l) => (l.includes(f) ? l.filter((x) => x !== f) : [...l, f]));
-  /* The pattern engine reads the notes field, so the request for extra formats is also written into the notes in plain words. */
+  /* Keep optional format selections alongside the customer's production instructions. */
   const formatBrief = () => {
     if (!formats.length && !formatNote.trim()) return '';
     const list = formats.length === ALL_FORMATS.length ? 'every possible dress format (all lengths, sleeves and shapes)' : formats.join(', ');
@@ -128,34 +121,91 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
       if (swatch) fd.append('swatch', swatch);
       const brief = formatBrief();
       fd.append('garment', garment); fd.append('notes', [notes.trim(), brief].filter(Boolean).join('\n\n')); fd.append('lining', lining);
-      if (brief) { fd.append('variants', JSON.stringify({ formats, all: formats.length === ALL_FORMATS.length, extraCuts, note: formatNote.trim() })); }
-      const d = await api('/api/workspace/patterns', { method: 'POST', body: fd });
-      setResult(d); onDone(d); toast.success('Pattern job started.');
+      fd.append('variants', JSON.stringify({ formats, all: formats.length === ALL_FORMATS.length, extraCuts, note: formatNote.trim() }));
+      const d = await api('/api/pattern-requests', { method: 'POST', body: fd });
+      setRequest(d.request); localStorage.setItem('fabricnow.latestPatternRequest', d.request.id);
+      
+      toast.success('Garment request submitted.');
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
 
-  const ready = Boolean(file);
-  const gLabel = result?.garment || result?.plan?.garment || 'AI auto-detect';
-  const stage = result ? 3 : busy ? 2 : ready ? 1 : 0;
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const saved = localStorage.getItem('fabricnow.latestPatternRequest');
+        if (!request) {
+          if (saved) {
+            const d = await api(`/api/pattern-requests/${saved}`);
+            if (active && d.request) setRequest(d.request);
+          } else {
+            const d = await api('/api/pattern-requests/mine');
+            const latest = d.requests?.[0];
+            if (active && latest) { setRequest(latest); localStorage.setItem('fabricnow.latestPatternRequest', latest.id); }
+          }
+        }
+      } catch { /* no previous request or it is no longer available */ }
+    };
+    load();
+    return () => { active = false; };
+  }, []);
 
-  if (result) {
+  useEffect(() => {
+    if (!request?.id || request.status === 'completed') return undefined;
+    let active = true;
+    const poll = async () => {
+      try { const d = await api(`/api/pattern-requests/${request.id}`); if (active && d.request) setRequest(d.request); } catch {}
+    };
+    const timer = setInterval(poll, 30000);
+    return () => { active = false; clearInterval(timer); };
+  }, [request?.id, request?.status]);
+
+  useEffect(() => {
+    let active = true; const loadPreviews = async () => {
+      if (request?.status !== 'completed' || !Array.isArray(request.previews)) { setPreviewImages([]); return; }
+      const token = localStorage.getItem(TOKEN_KEY);
+      const loaded = await Promise.all(request.previews.map(async p => {
+        try { const r = await fetch(`${API}${p.url}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }); if (!r.ok) return null; return { name: p.name, src: URL.createObjectURL(await r.blob()) }; } catch { return null; }
+      }));
+      if (active) setPreviewImages(loaded.filter(Boolean)); else loaded.filter(Boolean).forEach(x => URL.revokeObjectURL(x.src));
+    };
+    loadPreviews(); return () => { active = false; };
+  }, [request?.id, request?.status, request?.previews?.length]);
+
+  const downloadPattern = async () => {
+    if (!request?.id) return;
+    setDownloadBusy(true);
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const res = await fetch(`${API}/api/pattern-requests/${request.id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) throw new Error('Your ZIP is not available yet.');
+      const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = request.resultZipName || 'fabricnow-pattern.zip'; a.click(); URL.revokeObjectURL(url);
+    } catch (e) { setError(e.message); } finally { setDownloadBusy(false); }
+  };
+
+
+  const ready = Boolean(file);
+  const gLabel = garment || 'Not specified';
+  const stage = busy ? 2 : ready ? 1 : 0;
+
+  if (request) {
+    const completed = request.status === 'completed';
+    const statusLabel = completed ? 'Pattern ready' : request.status === 'revision_requested' ? 'Update requested' : request.status === 'processing' ? 'In production' : 'Request received';
     return (
       <div className="ps">
-        <Hero
-          eyebrow="PATTERN STUDIO" stage={3}
-          title="Review the pattern, then grade and export."
-          body="Check the generated pieces, adjust if needed, and prepare production-ready files."
-          actions={<button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15} /> Start another</button>}
-        />
-        <div className="ps-result-strip">
-          <span className="ok"><CheckCircle2 size={15} /> Pattern generated</span>
-          <b>{gLabel}</b>
-          <span>{cap(lining)} lining</span>
-          {swatch && <span>Fabric reference added</span>}
-          <button className="btn btn-ghost" type="button" onClick={() => setPage('projects')}>All projects <ArrowRight size={15} /></button>
-        </div>
-        <JobView jobId={result.id} initial={result} onJob={onJob} onDeleted={(id) => { onDeleted(id); reset(); }} />
+        <Hero eyebrow="PATTERN STUDIO" stage={3} title={completed ? 'Your garment pattern is ready.' : 'Generating garment...'} body={completed ? 'Your finished pattern package is ready in your Workspace.' : 'Grab a coffee and hold on. You can safely leave this page and come back later.'} actions={<button className="btn btn-ghost" type="button" onClick={() => { setRequest(null); localStorage.removeItem('fabricnow.latestPatternRequest'); reset(); }}><RotateCcw size={15} /> New request</button>} />
+        <section className="ps-card manual-status-card">
+          {completed ? <CheckCircle2 size={54} color="#26966b"/> : <div className="coffee-animation" aria-hidden="true"><span className="coffee-steam steam-one"/><span className="coffee-steam steam-two"/><Coffee size={54}/></div>}
+          <h2>{completed ? 'Your pattern is ready!' : 'Generating garment...'}</h2>
+          <p>{completed ? 'Your completed pattern ZIP is ready to view and download.' : 'Grab a coffee and hold on ☕'}</p>
+          <div className="manual-status-meta"><span className={`ps-pill ${completed ? 'on' : 'busy'}`}>{statusLabel}</span>{!completed && <span><Clock3 size={14}/> Estimated time: 20–30 minutes</span>}</div>
+          {!completed && <p className="manual-leave-note">You can safely leave this page. Come back to your Workspace later to check whether your garment is ready.</p>}
+          {request.adminNote && <div className="ps-result-strip">{request.adminNote}</div>}
+          {completed && previewImages.length > 0 && <div className="manual-preview-grid">{previewImages.map((p, i) => <figure key={`${p.name}-${i}`}><img src={p.src} alt={p.name}/><figcaption>{p.name}</figcaption></figure>)}</div>}
+          {completed && <button className="ps-cta" type="button" onClick={downloadPattern} disabled={downloadBusy}><Download size={17}/>{downloadBusy ? 'Preparing download…' : 'Download pattern ZIP'}</button>}
+          <small className="manual-request-id">Request #{String(request.id).slice(-8)}</small>
+        </section>
       </div>
     );
   }
@@ -165,7 +215,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
       <Hero
         eyebrow="PATTERN STUDIO" stage={stage}
         title="From garment photo to production pattern."
-        body="Upload a reference, describe how it’s constructed, and get cut-ready pattern pieces with grading and DXF / SVG exports."
+        body="Upload your garment reference and construction instructions. Our production workflow will prepare your pattern package."
         actions={<><button className="btn btn-ghost" type="button" onClick={reset}><RotateCcw size={15} /> Reset</button></>}
       />
 
@@ -174,7 +224,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
           <section className="ps-card">
             <div className="ps-card-head">
               <span className="ps-badge"><ImagePlus size={17} /></span>
-              <div><h3>Garment &amp; fabric</h3><p>A clear front or ¾ photo gives the most accurate pieces.</p></div>
+              <div><h3>Garment &amp; fabric</h3><p>Upload a clear front or ¾ view of the garment.</p></div>
             </div>
 
             {reference && (
@@ -208,10 +258,10 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
           <section className="ps-card">
             <div className="ps-card-head">
               <span className="ps-badge"><SlidersHorizontal size={17} /></span>
-              <div><h3>Construction</h3><p>Give the engine enough context to plan the pieces correctly.</p></div>
+              <div><h3>Construction</h3><p>Share the construction details for your pattern request.</p></div>
             </div>
             <div className="ps-config">
-              <div><span className="ps-label">Garment type</span><div className="ps-auto-detect"><Sparkles size={14}/> AI will identify the garment from the reference</div></div>
+              <div><label className="ps-label" htmlFor="garment-type">Garment type</label><input id="garment-type" className="ps-text-input" value={garment} onChange={e => setGarment(e.target.value)} placeholder="e.g. Maxi dress with flutter sleeves" /></div>
               <div><span className="ps-label">Lining</span><Segmented label="Lining" options={LININGS} value={lining} onChange={setLining} /></div>
             </div>
             <div className="ps-notes">
@@ -226,7 +276,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
           <section className="ps-card">
             <div className="ps-card-head">
               <span className="ps-badge"><Layers3 size={17} /></span>
-              <div><h3>Dress formats &amp; extra cuts</h3><p>Tell the AI which other versions of this dress to draft.</p></div>
+              <div><h3>Dress formats &amp; extra cuts</h3><p>Select any additional formats you want included in your request.</p></div>
             </div>
             <div className="ps-ideas" aria-label="Dress formats">
               <button type="button" className={formats.length === ALL_FORMATS.length ? 'on' : ''} onClick={() => setFormats(formats.length === ALL_FORMATS.length ? [] : ALL_FORMATS)}><Sparkles size={12} />All possible formats</button>
@@ -239,7 +289,7 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
             ))}
             <label className="ps-label" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 16 }}><input type="checkbox" checked={extraCuts} onChange={(e) => setExtraCuts(e.target.checked)} /> Cut each format as additional pieces</label>
             <div className="ps-notes">
-              <label className="ps-label" htmlFor="format-note">Tell the AI more <em>optional</em></label>
+              <label className="ps-label" htmlFor="format-note">Additional instructions <em>optional</em></label>
               <textarea id="format-note" rows={3} maxLength={200} value={formatNote} onChange={(e) => setFormatNote(e.target.value)} placeholder="e.g. keep the same neckline on every format, add 10 cm for the maxi" />
             </div>
           </section>
@@ -263,18 +313,18 @@ export default function Studio({ onDone, onJob, onDeleted, setPage }) {
 
           <div className="ps-route" aria-label="What you will get">
             <span><Layers3 size={14} /> Pattern pieces</span>
-            <span><Ruler size={14} /> Grading</span>
-            <span><FileOutput size={14} /> DXF / SVG</span>
+            <span><Ruler size={14} /> Your instructions</span>
+            <span><FileOutput size={14} /> ZIP package</span>
           </div>
 
           {error && <div className="ps-error" role="alert">{error}</div>}
 
           <button className="ps-cta" disabled={busy || !ready} data-no-spin aria-busy={busy}>
-            {busy ? <><Spinner size={16} /> Generating · {secs}s</> : <><Sparkles size={16} /> Generate</>}
+            {busy ? <><Spinner size={16} /> Submitting request…</> : <><Sparkles size={16} /> Generate</>}
           </button>
           {busy
             ? <div className="ps-progress" aria-hidden="true"><i /></div>
-            : <p className="ps-brief-foot">{ready ? 'When it finishes you can review, grade and export from the result.' : 'Add a garment photo to enable generation.'}</p>}
+            : <p className="ps-brief-foot">{ready ? 'Estimated completion: 20–30 minutes. You can leave and return later.' : 'Add a garment photo to submit your request.'}</p>}
         </aside>
       </form>
     </div>
