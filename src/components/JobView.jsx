@@ -99,14 +99,30 @@ export default function JobView({ jobId, initial, onJob, onDeleted }) {
           <div className="sheet-wrap">
             <AuthImage path={file(job.id, 'Fabric Now 1.png')} alt="Full pattern sheet" className="sheet-img" onClick={() => setZoom(file(job.id, 'Fabric Now 1.png'))} />
           </div>
-          <h4 className="sub">{job.pieces.length} pieces</h4>
+          <div className="pattern-assets-head">
+            <div><span className="pattern-kicker">CUTTING COMPONENTS</span><h4 className="sub">{job.pieces.length} pattern pieces</h4></div>
+            <span className="pattern-assets-note">Individual previews · PNG assets</span>
+          </div>
           <div className="piece-grid">
-            {job.pieces.map((p) => (
-              <figure key={p.name} className="piece">
-                <div className="piece-img"><AuthImage path={file(job.id, `${p.name}.png`)} alt={p.label} /></div>
-                <figcaption><strong>{p.label}</strong><small>{p.cut || `${p.w} × ${p.h}px`}</small></figcaption>
-              </figure>
-            ))}
+            {job.pieces.map((p, index) => {
+              // Worker manifest is authoritative: `file`/`id` are the actual exported filenames.
+              // `name` is a human-readable pattern-piece label, not a filename.
+              const assetName = p.file || (p.id ? `${p.id}.png` : `piece_${String(index + 1).padStart(2, '0')}.png`);
+              const dimensions = p.width_mm && p.height_mm
+                ? `${Math.round(p.width_mm)} × ${Math.round(p.height_mm)} mm`
+                : p.cut || (p.w && p.h ? `${p.w} × ${p.h}px` : 'Pattern component');
+              return (
+                <figure key={p.id || assetName || `${p.name}-${index}`} className="piece">
+                  <div className="piece-img">
+                    <AuthImage path={file(job.id, assetName)} alt={p.name || p.label || `Pattern piece ${index + 1}`} />
+                  </div>
+                  <figcaption>
+                    <strong>{p.name || p.label || `Pattern piece ${index + 1}`}</strong>
+                    <small>{dimensions}</small>
+                  </figcaption>
+                </figure>
+              );
+            })}
           </div>
           <Grading job={job} onJob={(j) => { setJob(j); cb.current?.(j); }} />
         </>
